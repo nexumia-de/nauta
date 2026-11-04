@@ -371,3 +371,27 @@ def test_setup_with_the_proxy_basic_auth(app, demo, monkeypatch):
     again = connection.Connection(watch=False)
     assert origin(demo.url) in again.api.http.proxy_auth
     window.destroy()
+
+
+def test_playing_song_follows_the_route(app, demo, monkeypatch):
+    """When the route changes (Wi-Fi gone), the media proxy cuts the
+    running stream so the player reconnects through the new address."""
+    from nauta.window import Window
+    monkeypatch.setattr(router.network, "current_ssids", lambda: None)
+    store = settings.Store()
+    account = store.load()
+    account.remote_url = demo.url
+    account.user_name = "robin"
+    store.save(account)
+    keyring.store(keyring.PASSWORD, PASSWORD)
+    conn = connection.Connection(store, watch=False)
+    window = Window(app, conn)
+    calls = []
+    monkeypatch.setattr(window.proxy, "reroute", lambda: calls.append(1))
+    run_until(lambda: conn.base_url == demo.url)
+    assert calls == []          # the first route is no change
+    conn.base_url = "http://127.0.0.1:9"
+    conn.emit("state-changed")
+    assert calls == [1]
+    window.player.clear()
+    window.destroy()
