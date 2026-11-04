@@ -6,7 +6,8 @@ import os
 
 import pytest
 
-from conftest import run_until, visible
+from conftest import run_until as _run_until
+from conftest import visible
 
 if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
     pytest.skip("needs a display", allow_module_level=True)
@@ -22,6 +23,18 @@ from nauta import connection, keyring, settings  # noqa: E402
 from nauta.demo import PASSWORD  # noqa: E402
 
 pytestmark = pytest.mark.usefixtures("quiet")
+
+
+def run_until(predicate, timeout=10):
+    """conftest.run_until, dumping every thread's stack on a timeout
+    (diagnostics for a hang seen only in CI)."""
+    try:
+        _run_until(predicate, timeout)
+    except TimeoutError:
+        import faulthandler
+        import sys
+        faulthandler.dump_traceback(sys.stderr, all_threads=True)
+        raise
 
 ALBUM = "al-195308cfb6d233b94d9b"       # Low Tide, liked in the demo
 SONG = "tr-a4151fee60ea58667850"        # its first song, with lyrics
@@ -149,21 +162,11 @@ def test_album_like_and_collection_menu(window, demo):
     assert all(s["albumId"] != ALBUM for s in window.player.queue)
 
 
-def wait_for_list(dialog, demo=None):
+def wait_for_list(dialog):
     """Until the "Add to Playlist" dialog shows its list (or an error,
     reported with its text)."""
     stack = dialog.get_child().get_content()
-    try:
-        run_until(lambda: stack.get_visible_child_name() != "loading", 30)
-    except TimeoutError:
-        # Diagnostics for a hang seen only in CI.
-        import faulthandler
-        import sys
-        faulthandler.dump_traceback(sys.stderr, all_threads=True)
-        if demo is not None:
-            print("demo requests:", [r[1] for r in demo.requests[-15:]],
-                  file=sys.stderr)
-        raise
+    run_until(lambda: stack.get_visible_child_name() != "loading", 30)
     page = stack.get_visible_child()
     assert stack.get_visible_child_name() == "list", \
         getattr(page, "get_description", lambda: "")()
@@ -176,7 +179,7 @@ def test_playlists_new_add_rename_reorder_remove_delete(window, demo):
     songs = demo.library["songs"]
     # A new playlist with a song, from the song menu's dialog.
     dialog = playlist_edit.choose_playlist(window, [songs[0]])
-    wait_for_list(dialog, demo)
+    wait_for_list(dialog)
     dialog.close()
     made = []
     alert = playlist_edit.new_playlist(window, [songs[0]], made.append)
@@ -187,7 +190,7 @@ def test_playlists_new_add_rename_reorder_remove_delete(window, demo):
     assert window.toasts_seen[-1] == "Added to “Road Trip”"
     # Add two more through the dialog's list.
     dialog = playlist_edit.choose_playlist(window, songs[1:3])
-    stack = wait_for_list(dialog, demo)
+    stack = wait_for_list(dialog)
     listbox = stack.get_visible_child().get_child().get_child().get_child()
     rows = []
     row = listbox.get_first_child()
