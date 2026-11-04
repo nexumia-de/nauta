@@ -169,6 +169,27 @@ The Downloads page lists MeTube's queue and done list (all of MeTube's
 downloads, also those started in its web UI) with cancel and "remove
 from the list".
 
+# Duplicates
+
+Facts as of MeTube `7e73766`[^metube]:
+
+- **MeTube's queue**: adding a URL that is already queued or pending
+  answers `{"status": "ok", "msg": "Already in queue: …"}`. Nauta shows
+  that message as a toast.
+- **yt-dlp's download archive** (off by default): once MeTube's
+  operator sets `"download_archive": "<file>"` in `YTDL_OPTIONS`, yt-dlp
+  records the id of every finished download. It then skips that id
+  again, also when it comes from the web UI or another device. For a
+  single URL, `/add` answers with an error: "Already recorded in the
+  download archive, so yt-dlp skipped it. …". Inside an album or
+  playlist, yt-dlp leaves archived songs out without a message. Nauta
+  counts those as done.
+- The archive matches **video ids only**. The same song from another
+  upload (a music video instead of the "Topic" track, another album) is
+  not a duplicate to it.
+- Nothing checks the Navidrome library: a song already there from
+  another source is downloaded again.
+
 # Not covered yet
 
 - Asking Navidrome to scan right away (`startScan` needs an admin user).
