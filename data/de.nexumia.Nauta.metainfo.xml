@@ -16,6 +16,7 @@
       <li>At home it talks to the server directly, elsewhere through its public address</li>
       <li>Works with servers that require a client certificate</li>
       <li>Separate streaming quality at home and away</li>
+      <li>Find new songs and download them into your library with your own MeTube server</li>
     </ul>
     <p>
       Nauta is an independent project and not affiliated with the

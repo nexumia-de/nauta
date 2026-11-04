@@ -16,6 +16,12 @@ bottom while you browse.
   bodies, never in a URL.
 - **Phone-friendly streaming**: separate quality limits at home and
   away; the server converts above them.
+- **Find new music** (optional): search YouTube Music and download
+  songs into your library through your own
+  [MeTube](https://github.com/alexta69/metube) server, set up to save
+  audio into Navidrome's music folder. MeTube is reached like Navidrome
+  (home/remote, client certificate, proxy login). See
+  [docs/downloads.md](docs/downloads.md).
 
 Status: first version (milestone M0), not yet tested on a phone. See
 the [milestones](https://github.com/nexumia-de/nauta/milestones) and

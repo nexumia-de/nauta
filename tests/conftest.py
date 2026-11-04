@@ -15,7 +15,7 @@ os.environ["NAUTA_KEYRING"] = "memory"
 from gi.repository import Gio  # noqa: E402
 from phosh_toolkit.testing import P12_PASSWORD, make_pki, run_until  # noqa: E402,F401
 
-from nauta.demo import DemoServer  # noqa: E402
+from nauta.demo import DemoMeTube, DemoServer  # noqa: E402
 
 DEMO = Path(__file__).resolve().parent / "data" / "demo"
 
@@ -26,6 +26,7 @@ def xdg(tmp_path, monkeypatch):
         monkeypatch.setenv(name, str(tmp_path / name.lower()))
     from nauta import keyring
     keyring.KEYRING.forget_memory()
+    keyring.DOWNLOADS.forget_memory()
 
 
 @pytest.fixture
@@ -52,3 +53,18 @@ def mtls_demo(pki):
 def trust(pki):
     """A Gio.TlsDatabase that trusts the test CA."""
     return Gio.TlsFileDatabase.new(str(pki / "ca.pem"))
+
+
+@pytest.fixture
+def metube():
+    server = DemoMeTube(DEMO).start()
+    yield server
+    server.stop()
+
+
+@pytest.fixture
+def mtls_metube(pki):
+    server = DemoMeTube(DEMO, tls=(pki / "server.pem", pki / "server.key",
+                                   pki / "ca.pem")).start()
+    yield server
+    server.stop()

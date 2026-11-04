@@ -30,6 +30,9 @@ branding colours are `#9fdde6` (light) and `#0d4f59` (dark).
 | Artist | name, album cards with year | same |
 | Search | search entry in the header; artists, albums, songs | same |
 | Now Playing | cover, title, slider, controls, queue | clamped to 600 px |
+| Find New Music | search entry in the header, YouTube Music / YouTube toggle (linked buttons), results with a download button; Downloads button in the header | clamped to 800 px |
+| Downloads | MeTube's running and finished downloads with cancel / remove | clamped to 800 px |
+| Set Up Downloads | intro, the connection form for MeTube, audio format, Connect | same |
 
 Every page is pushed onto one `AdwNavigationView`, so the swipe back
 closes it. The player bar sits below the navigation view, outside the

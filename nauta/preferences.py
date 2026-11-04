@@ -1,9 +1,10 @@
 """Preferences: style and streaming quality, the connection (the setup
-form) and the account."""
+form) and the account, and the download server (docs/downloads.md)."""
 from gi.repository import Adw, GLib, Gtk
 from phosh_toolkit.style import style_row
 
 from nauta import settings
+from nauta.find import download_form, format_row
 from nauta.setup import connection_form
 
 
@@ -62,6 +63,41 @@ class PreferencesDialog(Adw.PreferencesDialog):
         account_group.add(user)
         connection_page.add(account_group)
         self.add(connection_page)
+        self.downloads_page = self._downloads_page()
+        self.add(self.downloads_page)
+
+    def _downloads_page(self):
+        """MeTube: where it is and what it makes."""
+        dl = self.window.downloads
+        page = Adw.PreferencesPage(title="Downloads",
+                                   icon_name="folder-download-symbolic")
+        options = Adw.PreferencesGroup(
+            title="Downloads",
+            description="Find New Music searches YouTube Music and downloads "
+                        "songs with your own MeTube server.")
+        options.add(format_row(dl.account, self._on_format))
+        page.add(options)
+        self.download_form = download_form(self.window, dl.account,
+                                           toast=self.toast)
+        for group in self.download_form.groups:
+            page.add(group)
+        actions = Adw.PreferencesGroup()
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12,
+                      halign=Gtk.Align.CENTER)
+        self.download_save = Gtk.Button(label="Save and Connect")
+        self.download_save.add_css_class("pill")
+        self.download_save.add_css_class("suggested-action")
+        self.download_save.connect("clicked", self._on_download_save)
+        box.append(self.download_save)
+        self.download_remove = Gtk.Button(label="Remove Download Server")
+        self.download_remove.add_css_class("pill")
+        self.download_remove.add_css_class("destructive-action")
+        self.download_remove.set_visible(dl.configured)
+        self.download_remove.connect("clicked", self._on_download_remove)
+        box.append(self.download_remove)
+        actions.add(box)
+        page.add(actions)
+        return page
 
     def toast(self, message):
         self.add_toast(Adw.Toast(title=GLib.markup_escape_text(message)))
@@ -73,6 +109,49 @@ class PreferencesDialog(Adw.PreferencesDialog):
     def _on_quality(self, row, pspec, attr, values):
         setattr(self.window.connection.account, attr, values[row.get_selected()])
         self.window.connection.save()
+
+    def _on_format(self, value):
+        dl = self.window.downloads
+        dl.account.audio_format = value
+        dl.save()
+
+    def _on_download_save(self, *_):
+        dl = self.window.downloads
+
+        def done(answers, http):
+            self.download_save.set_sensitive(True)
+            if answers is None:
+                return
+            self.download_form.apply(dl.account)
+            dl.save()
+            dl.reconnect()
+            self.download_remove.set_visible(True)
+            self.toast("Saved")
+
+        if self.download_form.check(done):
+            self.download_save.set_sensitive(False)
+
+    def _on_download_remove(self, *_):
+        dialog = Adw.AlertDialog(
+            heading="Remove Download Server?",
+            body="Nauta forgets MeTube's addresses, certificate and proxy "
+                 "login. Songs already downloaded stay in your library.")
+        dialog.add_response("cancel", "Cancel")
+        dialog.add_response("remove", "Remove")
+        dialog.set_response_appearance("remove", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.connect("response", self._on_download_remove_response)
+        dialog.present(self)
+
+    def _on_download_remove_response(self, dialog, response):
+        if response != "remove":
+            return
+        self.window.downloads.forget()
+        # A fresh, empty form.
+        self.remove(self.downloads_page)
+        self.downloads_page = self._downloads_page()
+        self.add(self.downloads_page)
+        self.set_visible_page(self.downloads_page)
+        self.toast("Download server removed")
 
     def _on_save(self, *_):
         conn = self.window.connection
