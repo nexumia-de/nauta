@@ -38,7 +38,9 @@ battery use while streaming measured.
 
 **Exit criteria**: gapless playback, favourites (star) and a favourites
 view, sort orders for albums, the queue kept across restarts, sign-in
-with an API key, servers with a private CA.
+with an API key, servers with a private CA; finding and downloading new
+songs through the user's own MeTube ([downloads](downloads.md)) works
+against the owner's MeTube behind the proxy.
 
 # Risks
 

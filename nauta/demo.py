@@ -3,7 +3,8 @@ library (tests/data/demo). The store screenshots use it
 (NAUTA_DEMO=<dir>), and the tests run the client, the proxy and mutual
 TLS against it. Only the endpoints Nauta calls are implemented, with the
 answers shaped like Navidrome's (docs/subsonic-api.md). Covers and audio
-are made here: colour gradients and sine tones. No GTK."""
+are made here: colour gradients and sine tones. DemoMeTube stands in for
+the download server (docs/downloads.md). No GTK."""
 import colorsys
 import hashlib
 import io
@@ -41,18 +42,7 @@ class DemoServer:
         class Handler(_Handler):
             owner = server
 
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-        self.httpd.daemon_threads = True
-        self.scheme = "http"
-        if tls:
-            cert, key, ca = tls
-            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-            context.load_cert_chain(cert, key)
-            context.load_verify_locations(ca)
-            context.verify_mode = ssl.CERT_REQUIRED
-            self.httpd.socket = context.wrap_socket(self.httpd.socket,
-                                                    server_side=True)
-            self.scheme = "https"
+        self.httpd, self.scheme = _server(Handler, tls)
 
     @property
     def url(self):
@@ -198,6 +188,126 @@ class DemoServer:
         return self._audio[song_id]
 
 
+def _server(handler, tls):
+    """A threading HTTP server on 127.0.0.1, with tls (cert, key, CA)
+    HTTPS that requires a client certificate."""
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    httpd.daemon_threads = True
+    if not tls:
+        return httpd, "http"
+    cert, key, ca = tls
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(cert, key)
+    context.load_verify_locations(ca)
+    context.verify_mode = ssl.CERT_REQUIRED
+    httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
+    return httpd, "https"
+
+
+class DemoMeTube(DemoServer):
+    """A stand-in for MeTube (docs/downloads.md): /version, /browse with
+    the recorded search results of tests/data/demo/metube.json, /add,
+    /history and /delete. A download finishes after three looks at the
+    history; one whose title contains "unavailable" fails."""
+
+    def __init__(self, directory, tls=None):
+        self.data = json.loads((Path(directory) / "metube.json").read_text())
+        self.requests = []
+        self.queue, self.done = [], []
+        self.clock = 0
+        self.lock = threading.Lock()
+        # "name=value": refuse every request without this cookie, like a
+        # reverse proxy with its own login (Pangolin answers 401).
+        self.proxy_cookie = None
+        server = self
+
+        class Handler(_MeTubeHandler):
+            owner = server
+
+        self.httpd, self.scheme = _server(Handler, tls)
+
+    def answer(self, method, path, body):
+        if method == "GET" and path == "version":
+            return self.data["version"]
+        if method == "GET" and path == "history":
+            return self._history()
+        if method != "POST":
+            return None
+        if path == "browse":
+            return self._browse(body.get("url") or "", body.get("playlist_item_limit") or 0)
+        if path == "add":
+            return self._add(body)
+        if path == "delete":
+            ids = set(body.get("ids") or [])
+            with self.lock:
+                if body.get("where") == "queue":
+                    for item in [i for i in self.queue if i["url"] in ids]:
+                        self.queue.remove(item)
+                        self.done.append(dict(item, status="error", msg="Canceled"))
+                else:
+                    self.done = [i for i in self.done if i["url"] not in ids]
+            return {"status": "ok"}
+        return None
+
+    def _browse(self, url, limit):
+        if url.startswith("ytsearch"):
+            source, query = "youtube", url.partition(":")[2]
+        elif url.startswith("https://music.youtube.com/search?"):
+            source = "youtube-music"
+            query = dict(parse_qsl(urlsplit(url).query)).get("q", "")
+        else:
+            return {"status": "error", "msg": "This URL points to a single video, "
+                    "not a channel or playlist. Use Download instead."}
+        words = query.lower().split()
+        # "_artist": yt-dlp's flat YouTube Music results have the song
+        # title only, but YouTube matches the artist too.
+        entries = [{k: v for k, v in e.items() if not k.startswith("_")}
+                   for e in self.data["results"][source]
+                   if any(w in f"{e['title']} {e.get('_artist', '')}".lower()
+                          for w in words)]
+        if not entries:
+            return {"status": "error", "msg": "No entries found at this URL."}
+        return {"status": "ok", "title": query, "entries": entries[:limit or None]}
+
+    def _add(self, body):
+        if body.get("download_type") != "audio" or not body.get("quality"):
+            return {"status": "error", "msg": "Bad request"}
+        url = body.get("url") or ""
+        entry = next((e for source in self.data["results"].values()
+                      for e in source if e["url"] == url), None)
+        if entry is None:
+            return {"status": "error", "msg": "Unsupported URL"}
+        vid = dict(parse_qsl(urlsplit(url).query)).get("v", url)
+        with self.lock:
+            if any(i["id"] == vid for i in self.queue):
+                return {"status": "ok", "msg": f"Already in queue: {entry['title']}"}
+            self.clock += 1
+            # MeTube keys downloads by the video's webpage URL.
+            self.queue.append({
+                "id": vid, "title": entry["title"],
+                "url": f"https://www.youtube.com/watch?v={vid}",
+                "download_type": "audio", "format": body.get("format"),
+                "status": "queued", "percent": None, "msg": None,
+                "timestamp": self.clock, "looks": 0})
+        return {"status": "ok"}
+
+    def _history(self):
+        with self.lock:
+            for item in list(self.queue):
+                item["looks"] += 1
+                if item["looks"] >= 3:
+                    self.queue.remove(item)
+                    failed = "unavailable" in item["title"].lower()
+                    self.done.append(dict(
+                        item, status="error" if failed else "finished",
+                        percent=None if failed else 100,
+                        msg="Video unavailable" if failed else None))
+                else:
+                    item.update(status="downloading", percent=item["looks"] * 40.0)
+            return {"queue": [dict(i) for i in self.queue], "pending": [],
+                    "done": [dict(i) for i in self.done]}
+
+
 def _png(width, height, raw):
     def chunk(kind, data):
         return (struct.pack(">I", len(data)) + kind + data
@@ -261,3 +371,24 @@ class _Handler(BaseHTTPRequestHandler):
                         ("Content-Range", f"bytes {start}-{end}/{len(data)}")])
         else:
             self._send(200, data, content_type, [("Accept-Ranges", "bytes")])
+
+
+class _MeTubeHandler(_Handler):
+    def _handle(self, raw):
+        path = urlsplit(self.path).path.strip("/")
+        cookie = self.owner.proxy_cookie
+        if cookie and cookie not in (self.headers.get("Cookie") or ""):
+            self._send(401, b"Unauthorized", "text/plain")
+            return
+        try:
+            body = json.loads(raw or b"{}")
+        except ValueError:
+            self._send(400, b"Invalid JSON request body", "text/plain")
+            return
+        self.owner.requests.append((self.command, path, body))
+        answer = self.owner.answer(self.command, path, body)
+        if answer is None:
+            self._send(404, b"Not Found", "text/plain")
+        else:
+            # Like MeTube, which answers most calls as text/plain.
+            self._send(200, json.dumps(answer).encode(), "text/plain")

@@ -177,8 +177,13 @@ class SearchPage(Adw.NavigationPage):
             icon_name="system-search-symbolic", title="Search the Library",
             description="Find artists, albums and songs"), "start")
         self.stack.add_named(widgets.loading_page(), "loading")
+        # Not in the library: look for it with MeTube (docs/downloads.md).
+        find = Gtk.Button(label="Find New Music", halign=Gtk.Align.CENTER)
+        find.add_css_class("pill")
+        find.connect("clicked", lambda *_: window.show_find_music(self._query))
         self.stack.add_named(Adw.StatusPage(
-            icon_name="system-search-symbolic", title="No Results"), "empty")
+            icon_name="system-search-symbolic", title="No Results",
+            description="Not in your library yet", child=find), "empty")
         view = Adw.ToolbarView(content=self.stack)
         view.add_top_bar(header)
         self.set_child(view)

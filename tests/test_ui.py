@@ -240,3 +240,93 @@ def test_music_goes_on_with_the_window_closed(app, demo, monkeypatch):
     app.release()
     window.player.clear()
     window.destroy()
+
+
+def test_find_and_download_new_music(app, demo, mtls_metube, pki, trust, monkeypatch):
+    """From a search without results to MeTube's setup behind mutual TLS,
+    a search, a download and its end, the list of downloads and the
+    preferences (docs/downloads.md)."""
+    from nauta import downloads, find
+    from nauta.pages import SearchPage
+    from nauta.preferences import PreferencesDialog
+    from nauta.window import Window
+
+    def trusting_client(user_agent):
+        client = Client(user_agent)
+        client.tls_database = trust
+        return client
+    monkeypatch.setattr(connection_form, "Client", trusting_client)
+    monkeypatch.setattr(router.network, "current_ssids", lambda: None)
+    monkeypatch.setattr(downloads, "POLL", 1)
+    store = settings.Store()
+    account = store.load()
+    account.remote_url = demo.url
+    account.user_name = "robin"
+    store.save(account)
+    keyring.store(keyring.PASSWORD, PASSWORD)
+    conn = connection.Connection(store, watch=False)
+    dl = downloads.Downloads(watch=False)
+    dl.api.http.tls_database = trust
+    window = Window(app, conn, dl)
+    window.present()
+    toasts = []
+    monkeypatch.setattr(window, "toast", toasts.append)
+
+    window.show_search()
+    search = visible(window)
+    assert isinstance(search, SearchPage)
+    search.search("pine smoke")
+    run_until(lambda: search.stack.get_visible_child_name() == "empty")
+    search.stack.get_child_by_name("empty").get_child().emit("clicked")
+    setup_page = visible(window)
+    assert isinstance(setup_page, find.DownloadSetupPage)
+
+    setup_page.form.toast = window.toast
+    setup_page.form.remote.set_text(mtls_metube.url)
+    setup_page.form.choose_data((pki / "client.p12").read_bytes(), "client.p12")
+    setup_page.form.password.set_text(P12_PASSWORD)
+    setup_page.button.emit("clicked")
+    run_until(lambda: isinstance(visible(window), find.FindMusicPage))
+    page = visible(window)
+    # The setup page made way: swiping back returns to the library search.
+    assert window.nav.get_previous_page(page) is search
+    assert settings.DownloadStore().load().certificate
+    # The query from the library search was taken along.
+    assert page.entry.get_text() == "pine smoke"
+    run_until(lambda: page.stack.get_visible_child_name() == "results")
+    results = page.stack.get_child_by_name("results")
+    box = results.get_child().get_child().get_child()
+    row = box.get_row_at_index(0)
+    assert row.get_title() == "Pine Smoke"
+
+    page.source_buttons["youtube"].set_active(True)
+    assert settings.DownloadStore().load().source == "youtube"
+    run_until(lambda: page.stack.get_visible_child_name() == "results"
+              and page.stack.get_child_by_name("results") is not results)
+    box = page.stack.get_child_by_name("results").get_child().get_child().get_child()
+    row = box.get_row_at_index(0)
+    assert row.get_title().startswith("Juniper Vale - Pine Smoke")
+    row.download.emit("clicked")
+    run_until(lambda: any("Downloaded" in t for t in toasts), 20)
+    assert row.download.get_icon_name() == "object-select-symbolic"
+    added = [b for m, p, b in mtls_metube.requests if p == "add"]
+    assert added[0]["format"] == "m4a"
+
+    page.search("nothing like this")
+    run_until(lambda: page.stack.get_visible_child_name() == "empty")
+
+    window.nav.push(find.DownloadsPage(window))
+    downloads_page = visible(window)
+    run_until(lambda: downloads_page.stack.get_visible_child_name() == "list")
+    window.nav.pop()
+    run_until(lambda: dl._watchers == 0)
+
+    dialog = PreferencesDialog(window)
+    dialog.present(window)
+    assert dialog.download_form.remote.get_text() == mtls_metube.url
+    assert dialog.download_remove.get_visible()
+    dialog._on_download_remove_response(None, "remove")
+    assert not dl.configured and not settings.DownloadStore().load().remote_url
+    assert not dialog.download_remove.get_visible()
+    dialog.close()
+    window.destroy()

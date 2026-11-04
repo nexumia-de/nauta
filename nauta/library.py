@@ -187,6 +187,7 @@ class MainPage(Adw.NavigationPage):
         search.set_action_name("app.search")
         header.pack_start(search)
         menu = Gio.Menu()
+        menu.append("Find New Music", "app.find-music")
         menu.append("Preferences", "app.preferences")
         menu.append("About Nauta", "app.about")
         # Closing the window keeps the music playing; this ends both.

@@ -40,6 +40,24 @@ class Account:
         return bool(self.user_name and (self.remote_url or self.local_url))
 
 
+@dataclass
+class DownloadServer:
+    """The user's MeTube server for finding new music (docs/downloads.md);
+    the same fields as Account for the connection form."""
+    remote_url: str = ""
+    local_url: str = ""
+    home_networks: list = field(default_factory=list)
+    certificate: bool = False
+    # MeTube's audio format (nauta.metube.FORMATS) and the last search
+    # source (nauta.metube.SOURCES).
+    audio_format: str = "m4a"
+    source: str = "youtube-music"
+
+    @property
+    def configured(self):
+        return bool(self.remote_url or self.local_url)
+
+
 def config_dir():
     return app_dir("config", "nauta")
 
@@ -55,6 +73,18 @@ def cache_dir():
 def certificates():
     """The saved client certificate and its password in the keyring."""
     return CertificateFile(data_dir() / "client-certificate", keyring.KEYRING)
+
+
+def download_certificates():
+    """The download server's client certificate, password in its own
+    keyring schema."""
+    return CertificateFile(data_dir() / "download-certificate", keyring.DOWNLOADS)
+
+
+class DownloadStore(JsonStore):
+    def __init__(self, path=None):
+        super().__init__(path or config_dir() / "downloads.json", DownloadServer,
+                         VERSION)
 
 
 class Store(JsonStore):

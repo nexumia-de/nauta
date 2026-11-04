@@ -1,0 +1,123 @@
+{
+ "_comment": "Invented search results for the MeTube stand-in (nauta/demo.py), shaped like MeTube's /browse answer. Not recorded from YouTube.",
+ "version": {
+  "yt-dlp": "2026.10.31",
+  "version": "2026.11.01"
+ },
+ "results": {
+  "youtube-music": [
+   {
+    "url": "https://music.youtube.com/watch?v=demo0000000",
+    "title": "Northern Tide",
+    "duration": null,
+    "_artist": "Harbour Lights"
+   },
+   {
+    "url": "https://music.youtube.com/watch?v=demo0000001",
+    "title": "Lanterns on the Pier",
+    "duration": null,
+    "_artist": "Harbour Lights"
+   },
+   {
+    "url": "https://music.youtube.com/watch?v=demo0000002",
+    "title": "Saltwater Letters",
+    "duration": null,
+    "_artist": "Harbour Lights"
+   },
+   {
+    "url": "https://music.youtube.com/watch?v=demo0000003",
+    "title": "Glass Orchard",
+    "duration": null,
+    "_artist": "Mira Okafor"
+   },
+   {
+    "url": "https://music.youtube.com/watch?v=demo0000004",
+    "title": "Slow Satellite",
+    "duration": null,
+    "_artist": "Mira Okafor"
+   },
+   {
+    "url": "https://music.youtube.com/watch?v=demo0000005",
+    "title": "Pine Smoke",
+    "duration": null,
+    "_artist": "Juniper Vale"
+   },
+   {
+    "url": "https://music.youtube.com/watch?v=demo0000006",
+    "title": "Rust and Rain",
+    "duration": null,
+    "_artist": "The Copper Gulls"
+   },
+   {
+    "url": "https://music.youtube.com/watch?v=demo0000007",
+    "title": "Static Bloom",
+    "duration": null,
+    "_artist": "Signal & Swell"
+   },
+   {
+    "url": "https://music.youtube.com/watch?v=demo0000008",
+    "title": "Blue Hour Waltz",
+    "duration": null,
+    "_artist": "Ada Lindqvist Trio"
+   },
+   {
+    "url": "https://music.youtube.com/watch?v=demo0000009",
+    "title": "Unavailable Session",
+    "duration": null,
+    "_artist": "Signal & Swell"
+   }
+  ],
+  "youtube": [
+   {
+    "url": "https://www.youtube.com/watch?v=demo0000000y",
+    "title": "Harbour Lights - Northern Tide (Official Audio)",
+    "duration": 150
+   },
+   {
+    "url": "https://www.youtube.com/watch?v=demo0000001y",
+    "title": "Harbour Lights - Lanterns on the Pier (Official Audio)",
+    "duration": 167
+   },
+   {
+    "url": "https://www.youtube.com/watch?v=demo0000002y",
+    "title": "Harbour Lights - Saltwater Letters (Official Audio)",
+    "duration": 184
+   },
+   {
+    "url": "https://www.youtube.com/watch?v=demo0000003y",
+    "title": "Mira Okafor - Glass Orchard (Official Audio)",
+    "duration": 201
+   },
+   {
+    "url": "https://www.youtube.com/watch?v=demo0000004y",
+    "title": "Mira Okafor - Slow Satellite (Official Audio)",
+    "duration": 218
+   },
+   {
+    "url": "https://www.youtube.com/watch?v=demo0000005y",
+    "title": "Juniper Vale - Pine Smoke (Official Audio)",
+    "duration": 235
+   },
+   {
+    "url": "https://www.youtube.com/watch?v=demo0000006y",
+    "title": "The Copper Gulls - Rust and Rain (Official Audio)",
+    "duration": 252
+   },
+   {
+    "url": "https://www.youtube.com/watch?v=demo0000007y",
+    "title": "Signal & Swell - Static Bloom (Official Audio)",
+    "duration": 269
+   },
+   {
+    "url": "https://www.youtube.com/watch?v=demo0000008y",
+    "title": "Ada Lindqvist Trio - Blue Hour Waltz (Official Audio)",
+    "duration": 286
+   },
+   {
+    "url": "https://www.youtube.com/watch?v=demo0000009y",
+    "title": "Signal & Swell - Unavailable Session (Official Audio)",
+    "duration": 303
+   }
+  ]
+ }
+}

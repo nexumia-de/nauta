@@ -6,6 +6,7 @@ from phosh_toolkit.proxy import MediaProxy
 
 from nauta import NAME
 from nauta import connection as connection_module
+from nauta import downloads as downloads_module
 from nauta.images import Covers
 from nauta.library import MainPage
 from nauta.nowplaying import NowPlayingPage, PlayerBar
@@ -17,7 +18,7 @@ log = logging.getLogger("nauta.window")
 
 
 class Window(Adw.ApplicationWindow):
-    def __init__(self, app, connection):
+    def __init__(self, app, connection, downloads=None):
         super().__init__(application=app, default_width=1000,
                          default_height=700, title=NAME)
         # Breakpoints need a minimum size (phosh-toolkit adaptive rules).
@@ -25,6 +26,9 @@ class Window(Adw.ApplicationWindow):
         self.app_name = NAME
         self.app_icon = app.get_application_id()
         self.connection = connection
+        # The download server for new music (docs/downloads.md).
+        self.downloads = downloads or downloads_module.Downloads(
+            watch=connection.watcher is not None)
         self.covers = Covers(connection)
         self.proxy = MediaProxy(connection.forward)
         self.player = Player(connection, self.proxy)
@@ -64,10 +68,16 @@ class Window(Adw.ApplicationWindow):
 
         connection.connect("signed-out", self._on_signed_out)
         connection.connect("proxy-login", self._on_proxy_login)
+        self.downloads.connect("proxy-login", self._on_downloads_proxy_login)
+        self.downloads.connect("finished", lambda d, title: self.toast(
+            f"Downloaded “{title}”. Navidrome adds it at its next scan."))
+        self.downloads.connect("failed", lambda d, title, message: self.toast(
+            f"Can't download “{title}”: {message}"))
         self.connect("close-request", self._on_close)
         if connection.signed_in:
             self.show_library()
             connection.resolve()
+            self.downloads.resolve()
         else:
             self.show_setup()
 
@@ -105,6 +115,22 @@ class Window(Adw.ApplicationWindow):
             return
         self.nav.push(SearchPage(self))
 
+    def show_find_music(self, query=""):
+        """Search for new music through MeTube, or set it up first."""
+        if self.main is None:
+            return
+        from nauta.find import DownloadSetupPage, FindMusicPage
+        visible = self.nav.get_visible_page()
+        if isinstance(visible, FindMusicPage):
+            if query:
+                visible.search(query)
+            visible.entry.grab_focus()
+            return
+        if self.downloads.configured:
+            self.nav.push(FindMusicPage(self, query))
+        else:
+            self.nav.push(DownloadSetupPage(self, query))
+
     def show_now_playing(self):
         if self.player.song is not None and not self.now_playing_shown():
             self.nav.push(NowPlayingPage(self))
@@ -134,6 +160,13 @@ class Window(Adw.ApplicationWindow):
             proxy_login.sign_in(self.nav, connection, connection.api.http,
                                 connection.proxy_cookies,
                                 connection_module.probe_through, url)
+
+    def _on_downloads_proxy_login(self, downloads, url):
+        """The proxy in front of MeTube wants its login (again)."""
+        if downloads.configured and self.main is not None:
+            proxy_login.sign_in(self.nav, downloads, downloads.api.http,
+                                downloads.proxy_cookies,
+                                downloads_module.probe_through, url)
 
     def _on_signed_out(self, *_):
         self.player.clear()
