@@ -64,6 +64,7 @@ class SetupPage(Adw.NavigationPage):
             if answers is None:
                 return
             self.window.connection.api.http.certificate = http.certificate
+            self.window.connection.api.http.cookies = http.cookies
             self.window.nav.push(SignInPage(self.window, self.form,
                                             self.form.answer(answers),
                                             self.form.reachable_url(answers)))
