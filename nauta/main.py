@@ -67,17 +67,21 @@ class Application(Adw.Application):
                                ("search", self._on_search),
                                ("play-pause", self._on_play_pause),
                                ("now-playing", self._on_now_playing),
+                               ("show-liked", self._on_show_liked),
+                               ("show-lyrics", self._on_show_lyrics),
                                ("quit", self._on_quit)):
             action = Gio.SimpleAction.new(name, None)
             action.connect("activate", callback)
             self.add_action(action)
         # App actions with parameters, so screenshots can open states over
         # D-Bus (release.toml): show-view(n) for Albums (0), Artists (1)
-        # and Playlists (2); show-album and play-album take an album id;
-        # find-music-for searches new music for a query.
+        # and Playlists (2); show-album and play-album take an album id,
+        # show-artist an artist id; find-music-for searches new music for
+        # a query.
         for name, kind, callback in (("show-view", "i", self._on_show_view),
                                      ("find-music-for", "s", self._on_find_music_for),
                                      ("show-album", "s", self._on_show_album),
+                                     ("show-artist", "s", self._on_show_artist),
                                      ("play-album", "s", self._on_play_album)):
             action = Gio.SimpleAction.new(name, GLib.VariantType(kind))
             action.connect("activate", callback)
@@ -134,6 +138,18 @@ class Application(Adw.Application):
     def _on_show_album(self, action, album_id):
         if self._window() and self._window().main is not None:
             self._window().show_album({"id": album_id.unpack()})
+
+    def _on_show_artist(self, action, artist_id):
+        if self._window() and self._window().main is not None:
+            self._window().show_artist({"id": artist_id.unpack()})
+
+    def _on_show_liked(self, *_):
+        if self._window() and self._window().main is not None:
+            self._window().show_liked()
+
+    def _on_show_lyrics(self, *_):
+        if self._window():
+            self._window().show_lyrics()
 
     def _on_play_album(self, action, album_id):
         window = self._window()

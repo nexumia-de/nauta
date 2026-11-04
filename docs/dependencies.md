@@ -17,7 +17,7 @@ installs no licence files.
 
 | Module | Version | Licence | Licence files |
 |---|---|---|---|
-| `phosh-toolkit` | commit `7d29bea` (nexumia-de/phosh-toolkit#34, until the next tag) | GPL-3.0-or-later (own code, same author) | `LICENSE` → `/app/share/licenses/<app id>/phosh-toolkit/` |
+| `phosh-toolkit` | tag `v0.3.0` (commit `c29a2a1`) | GPL-3.0-or-later (own code, same author) | `LICENSE` → `/app/share/licenses/<app id>/phosh-toolkit/` |
 | `noto-cjk` | tag `Sans2.004`, `Sans/Variable/OTC/NotoSansCJK-VF.otf.ttc` | OFL-1.1 (read from the tag's `LICENSE`) | `LICENSE` → `/app/share/licenses/<app id>/noto-cjk/` |
 
 Only `lib/phosh_toolkit/` is installed: the shared connection and

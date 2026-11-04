@@ -75,3 +75,45 @@ def youtube_music():
     server = DemoYouTubeMusic(DEMO).start()
     yield server
     server.stop()
+
+
+# --- UI tests (need a display) ------------------------------------------
+
+@pytest.fixture(scope="session")
+def app():
+    """One application for all UI tests: a second one with the same id
+    can't register on the session bus."""
+    from gi.repository import Adw, Gtk
+
+    from nauta.main import Application
+    application = Application()
+    application.register(None)
+    Adw.init()
+    # No animations: a spinner redrawing all the time keeps GTK's frame
+    # source ready on slow software rendering (CI's xvfb), and the idle
+    # callbacks that deliver worker results then never run.
+    Gtk.Settings.get_default().props.gtk_enable_animations = False
+    yield application
+
+
+@pytest.fixture
+def quiet(monkeypatch):
+    """No sound card in CI: a clocked fakesink instead."""
+    import gi
+    gi.require_version("Gst", "1.0")
+    from gi.repository import Gst
+    from phosh_toolkit.media import Media
+
+    from nauta import player
+
+    def media(url, video=False):
+        m = Media(url, video=False)
+        sink = Gst.ElementFactory.make("fakesink", None)
+        sink.props.sync = True
+        m.pipeline.props.audio_sink = sink
+        return m
+    monkeypatch.setattr(player, "Media", media)
+
+
+def visible(window):
+    return window.nav.get_visible_page()

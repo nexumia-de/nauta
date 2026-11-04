@@ -35,3 +35,14 @@
   min-width: 64px;
   min-height: 64px;
 }
+
+/* What a swiped song row uncovers (nauta/swipe.py). */
+.nauta-swipe {
+  background-color: var(--accent-bg-color);
+  color: var(--accent-fg-color);
+}
+
+/* Lyrics: plain lines, no row separators. */
+.nauta-lyrics {
+  background: none;
+}

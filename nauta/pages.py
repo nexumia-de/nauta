@@ -1,13 +1,14 @@
-"""Pages pushed onto the navigation view: an album, an artist, a playlist
-and search. Every one closes with the swipe back."""
+"""Pages pushed onto the navigation view: an album, a playlist and
+search. Every one closes with the swipe back. The artist page is in
+artist.py, Liked Songs in liked.py."""
 from gi.repository import Adw, Gtk, Pango
 
-from nauta import text, widgets
+from nauta import actions, favourites, playlist_edit, text, widgets
 
 COVER = 200
 
 
-def _page(child):
+def page(child):
     """A scrolled, clamped page body."""
     clamp = Adw.Clamp(child=child, maximum_size=900, margin_top=12,
                       margin_bottom=24, margin_start=12, margin_end=12)
@@ -15,7 +16,7 @@ def _page(child):
                               vexpand=True)
 
 
-def _label(value, css=(), wrap=True):
+def label(value, css=(), wrap=True):
     label = Gtk.Label(label=value, wrap=wrap, xalign=0.5,
                       justify=Gtk.Justification.CENTER,
                       wrap_mode=Pango.WrapMode.WORD_CHAR)
@@ -53,22 +54,25 @@ class LoadingPage(Adw.NavigationPage):
         self.stack.set_visible_child_name("content")
 
 
-def _header(window, cover_id, title, subtitle_widget, details, songs):
-    """Cover, title, artist, details and Play / Shuffle buttons."""
+def header(window, cover_id, title, subtitle_widget, details, songs,
+           start=None, end=None, icon="folder-music-symbolic"):
+    """Cover, title, artist, details and Play / Shuffle buttons, with
+    `start` and `end` widgets beside them (like button, "⋮" menu)."""
     box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-    cover = widgets.Cover(size=COVER, icon="folder-music-symbolic")
+    cover = widgets.Cover(size=COVER, icon=icon)
     cover.set_halign(Gtk.Align.CENTER)
     cover.show(window.covers, cover_id, COVER)
     box.append(cover)
-    title_label = _label(title, ("title-2",))
+    title_label = label(title, ("title-2",))
     title_label.set_margin_top(12)
     box.append(title_label)
     if subtitle_widget is not None:
         box.append(subtitle_widget)
     if details:
-        box.append(_label(details, ("caption", "dimmed", "dim-label")))
-    buttons = Gtk.Box(spacing=12, halign=Gtk.Align.CENTER, margin_top=12,
-                      homogeneous=True)
+        box.append(label(details, ("caption", "dimmed", "dim-label")))
+    buttons = Gtk.Box(spacing=8, halign=Gtk.Align.CENTER, margin_top=12)
+    if start is not None:
+        buttons.append(start)
     play = Gtk.Button(child=Adw.ButtonContent(icon_name="media-playback-start-symbolic",
                                               label="Play"))
     play.add_css_class("pill")
@@ -81,6 +85,8 @@ def _header(window, cover_id, title, subtitle_widget, details, songs):
     for button in (play, shuffle):
         button.set_sensitive(bool(songs))
         buttons.append(button)
+    if end is not None:
+        buttons.append(end)
     box.append(buttons)
     box.play_button = play
     return box
@@ -109,14 +115,20 @@ class AlbumPage(LoadingPage):
         else:
             artist.set_sensitive(False)
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
-        self.header = _header(self.window, album.get("coverArt"), album.get("name") or "",
-                              artist, text.album_details(album), songs)
+        window = self.window
+        self.menu = actions.menu_button(lambda: actions.collection_menu(
+            window, songs, favourites.ALBUM, album))
+        self.like = actions.like_button(window, favourites.ALBUM, album)
+        self.header = header(window, album.get("coverArt"), album.get("name") or "",
+                             artist, text.album_details(album), songs,
+                             self.like, self.menu)
         body.append(self.header)
         if songs:
             self.list = widgets.song_list(
-                songs, lambda i: self.window.player.play(songs, i), with_album=False)
+                songs, lambda i: window.player.play(songs, i), with_album=False,
+                actions=actions.SongActions(window))
             body.append(self.list)
-        return _page(body)
+        return page(body)
 
 
 class PlaylistPage(LoadingPage):
@@ -129,38 +141,67 @@ class PlaylistPage(LoadingPage):
         conn.call(conn.api.playlist, self.loaded, self.playlist["id"])
 
     def build(self, playlist):
-        songs = playlist.get("entry") or []
+        self.playlist = playlist
+        self.set_title(playlist.get("name") or "Playlist")
+        window = self.window
+        self.songs = songs = playlist.get("entry") or []
         details = f"{text.songs(len(songs))} · {text.total(playlist.get('duration'))}"
+        if playlist.get("comment"):
+            details = f"{playlist['comment']}\n{details}"
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
-        body.append(_header(self.window, playlist.get("coverArt"),
-                            playlist.get("name") or "", None, details, songs))
+        self.editable = playlist_edit.editable(window, playlist)
+        extras = []
+        if self.editable:
+            extras = [("Rename…", lambda: playlist_edit.rename_playlist(
+                          window, playlist, lambda name: self.reload())),
+                      ("Delete Playlist…", lambda: playlist_edit.delete_playlist(
+                          window, playlist, self._deleted))]
+        self.menu = actions.menu_button(lambda: actions.collection_menu(
+            window, songs, extras=extras))
+        body.append(header(window, playlist.get("coverArt"),
+                           playlist.get("name") or "", None, details, songs,
+                           end=self.menu))
         if songs:
-            body.append(widgets.song_list(
-                songs, lambda i: self.window.player.play(songs, i),
-                covers=self.window.covers))
-        return _page(body)
+            song_extras = []
+            if self.editable:
+                song_extras = [("Remove from Playlist", self._remove),
+                               ("Move Up", lambda i: self._move(i, i - 1)),
+                               ("Move Down", lambda i: self._move(i, i + 1))]
+            self.list = widgets.song_list(
+                songs, lambda i: window.player.play(songs, i),
+                covers=window.covers,
+                actions=actions.SongActions(window, song_extras))
+            body.append(self.list)
+        else:
+            body.append(Adw.StatusPage(
+                icon_name="view-list-bullet-symbolic", title="No Songs",
+                description="Add songs with “Add to Playlist…” in a song's menu"))
+        return page(body)
 
+    def _deleted(self):
+        if self.get_parent() is not None:
+            self.window.nav.pop_to_page(self.window.main)
 
-class ArtistPage(LoadingPage):
-    def __init__(self, window, artist):
-        self.artist = artist
-        super().__init__(window, artist.get("name") or "Artist", "artist")
-
-    def fetch(self):
+    def _remove(self, index):
         conn = self.window.connection
-        conn.call(conn.api.artist, self.loaded, self.artist["id"])
+        title = self.songs[index].get("title")
 
-    def build(self, artist):
-        albums = sorted(artist.get("album") or [],
-                        key=lambda a: a.get("year") or 0, reverse=True)
-        body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
-        name = _label(artist.get("name") or "", ("title-1",))
-        body.append(name)
-        body.append(_label(text.albums(len(albums)), ("dimmed", "dim-label")))
-        body.append(widgets.album_box(
-            self.window.covers, albums, self.window.show_album,
-            subtitle=lambda a: str(a.get("year") or "")))
-        return _page(body)
+        def done(result, error):
+            if error is not None:
+                self.window.toast(f"Can't remove the song: {error}")
+                return
+            self.window.toast(f"Removed “{title}”")
+            self.window.playlists_changed()
+            self.reload()
+        conn.call(lambda: conn.api.update_playlist(self.playlist["id"],
+                                                   remove=[index]), done)
+
+    def _move(self, index, to):
+        if not 0 <= to < len(self.songs):
+            return
+        songs = list(self.songs)
+        songs.insert(to, songs.pop(index))
+        playlist_edit.save_order(self.window, self.playlist, songs, self.reload)
 
 
 class SearchPage(Adw.NavigationPage):
@@ -239,7 +280,8 @@ class SearchPage(Adw.NavigationPage):
             songs = found["song"]
             body.append(widgets.section("Songs", widgets.song_list(
                 songs, lambda i: self.window.player.play(songs, i),
-                covers=self.window.covers)))
-        self.stack.add_named(_page(body), "results")
+                covers=self.window.covers,
+                actions=actions.SongActions(self.window))))
+        self.stack.add_named(page(body), "results")
         self.stack.set_visible_child_name("results")
 

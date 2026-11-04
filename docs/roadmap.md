@@ -3,7 +3,7 @@ type: Plan
 title: Roadmap
 description: Goals and exit criteria of Nauta's milestones; the work items are GitHub issues in those milestones.
 tags: [plan, roadmap, milestones]
-generated: { by: claude-code/2.1.317, at: 2026-11-04T14:00:00Z }
+generated: { by: claude-code/2.1.317, at: 2026-11-04T20:30:00Z }
 ---
 
 # How the plan is tracked
@@ -41,6 +41,19 @@ view, sort orders for albums, the queue kept across restarts, sign-in
 with an API key, servers with a private CA; finding and downloading new
 songs through the user's own MeTube ([downloads](downloads.md)) works
 against the owner's MeTube behind the proxy.
+
+# M3 – Like Spotify
+
+**Goal**: the everyday features of Spotify that Navidrome can serve
+([library features](library.md)), at the owner's request.
+
+**Exit criteria**: a menu on every song (play next, add to queue, like,
+add to playlist, radio, go to album or artist); swipe to queue; Liked
+Songs; playlists made, renamed, reordered and deleted in the app; the
+queue edited on Now Playing with repeat, shuffle and a sleep timer;
+radio, popular songs and similar artists; synced lyrics; volume
+normalisation; checked on the phone against the owner's Navidrome.
+Later: offline albums, crossfade and equalizer, share links.
 
 # Risks
 

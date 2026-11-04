@@ -16,6 +16,12 @@ bottom while you browse.
   bodies, never in a URL.
 - **Phone-friendly streaming**: separate quality limits at home and
   away; the server converts above them.
+- **Like Spotify, on your own server**: a menu on every song (play
+  next, add to queue, like, add to playlist, radio), swipe to queue,
+  Liked Songs, playlist editing, an editable queue with shuffle, repeat
+  and a sleep timer that survives restarts, popular songs and similar
+  artists, synced lyrics and volume normalisation. See
+  [docs/library.md](docs/library.md).
 - **Find new music** (optional): search YouTube Music for songs,
   albums or playlists and download single songs or whole albums into
   your library through your own
@@ -25,7 +31,8 @@ bottom while you browse.
   search asks YouTube Music directly from the phone. See
   [docs/downloads.md](docs/downloads.md).
 
-Status: first version (milestone M0), not yet tested on a phone. See
+Status: in daily use on a Phosh phone against a real Navidrome
+(background playback, lock-screen controls, home and mobile data). See
 the [milestones](https://github.com/nexumia-de/nauta/milestones) and
 [docs/roadmap.md](docs/roadmap.md).
 

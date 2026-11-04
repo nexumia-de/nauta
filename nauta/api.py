@@ -94,7 +94,7 @@ class Subsonic:
 
     def albums(self, kind="newest", size=60, offset=0):
         """getAlbumList2: kind is newest, recent, frequent, random,
-        alphabeticalByName, alphabeticalByArtist or starred."""
+        alphabeticalByName, alphabeticalByArtist, starred or highest."""
         answer = self.call("getAlbumList2", type=kind, size=size, offset=offset)
         return (answer.get("albumList2") or {}).get("album") or []
 
@@ -135,6 +135,61 @@ class Subsonic:
             _answer(response.body)
             raise HttpError(SERVER, "No cover")
         return response.body
+
+    # --- favourites, discovery, lyrics ---------------------------------
+
+    def star(self, song_ids=(), album_ids=(), artist_ids=(), starred=True):
+        """Like (star) or unlike songs, albums and artists."""
+        self.call("star" if starred else "unstar", id=list(song_ids),
+                  albumId=list(album_ids), artistId=list(artist_ids))
+
+    def starred(self):
+        """{"artist": […], "album": […], "song": […]} the user liked."""
+        found = self.call("getStarred2").get("starred2") or {}
+        return {k: found.get(k) or [] for k in ("artist", "album", "song")}
+
+    def similar_songs(self, item_id, count=50):
+        """Songs like a song, album or artist (needs an agent such as
+        Last.fm on the server; else empty)."""
+        answer = self.call("getSimilarSongs2", id=item_id, count=count)
+        return (answer.get("similarSongs2") or {}).get("song") or []
+
+    def top_songs(self, artist_name, count=10):
+        """An artist's most popular songs that are in the library."""
+        answer = self.call("getTopSongs", artist=artist_name, count=count)
+        return (answer.get("topSongs") or {}).get("song") or []
+
+    def artist_info(self, artist_id, count=12):
+        """Biography and "similarArtist" (in the library only)."""
+        return self.call("getArtistInfo2", id=artist_id, count=count) \
+            .get("artistInfo2") or {}
+
+    def lyrics(self, song_id):
+        """The song's structured lyrics (OpenSubsonic songLyrics): a list of
+        {"synced": bool, "line": [{"start": ms, "value": str}], …}."""
+        answer = self.call("getLyricsBySongId", id=song_id)
+        return (answer.get("lyricsList") or {}).get("structuredLyrics") or []
+
+    # --- playlists ------------------------------------------------------
+
+    def create_playlist(self, name, song_ids=()):
+        """A new playlist; the playlist with its entries."""
+        return self.call("createPlaylist", name=name,
+                         songId=list(song_ids)).get("playlist") or {}
+
+    def set_playlist_songs(self, playlist_id, song_ids):
+        """Replace a playlist's songs (createPlaylist with playlistId), to
+        save a new order."""
+        return self.call("createPlaylist", playlistId=playlist_id,
+                         songId=list(song_ids)).get("playlist") or {}
+
+    def update_playlist(self, playlist_id, name=None, add=(), remove=()):
+        """Rename; add song ids at the end; remove songs by index."""
+        self.call("updatePlaylist", playlistId=playlist_id, name=name,
+                  songIdToAdd=list(add), songIndexToRemove=list(remove))
+
+    def delete_playlist(self, playlist_id):
+        self.call("deletePlaylist", id=playlist_id)
 
     def scrobble(self, song_id, submission):
         """Now playing (submission False) or played (True)."""

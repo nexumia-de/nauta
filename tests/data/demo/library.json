@@ -1794,5 +1794,82 @@
     "tr-cca0344cb71dc213b5ed"
    ]
   }
- ]
+ ],
+ "starred": [
+  "tr-a4151fee60ea58667850",
+  "tr-4fb022b42ccf667b765c",
+  "tr-dc5dc91c5b59e031a72f",
+  "tr-37e643e350fc40aa6823",
+  "tr-206d406bb17c1728671c",
+  "al-195308cfb6d233b94d9b",
+  "al-926f4a829896508ba18e",
+  "ar-d187551ec73db6bf7b64"
+ ],
+ "lyrics": {
+  "tr-a4151fee60ea58667850": {
+   "synced": true,
+   "lines": [
+    [
+     0,
+     "The harbour wakes in silver light"
+    ],
+    [
+     2200,
+     "Gulls are calling out the tide"
+    ],
+    [
+     4400,
+     "We left the lantern burning bright"
+    ],
+    [
+     6600,
+     "And waited on the other side"
+    ],
+    [
+     8800,
+     ""
+    ],
+    [
+     11000,
+     "Morning swell, carry me home"
+    ],
+    [
+     13200,
+     "Over the water, I'm never alone"
+    ],
+    [
+     15400,
+     "Morning swell, carry me home"
+    ],
+    [
+     17600,
+     "Every wave is a road I have known"
+    ]
+   ]
+  }
+ },
+ "similar": {
+  "ar-0cc9bd8a19dfe4c22d8f": [
+   "ar-eafa77a1b36bbbb76b94",
+   "ar-d187551ec73db6bf7b64"
+  ],
+  "ar-eafa77a1b36bbbb76b94": [
+   "ar-0cc9bd8a19dfe4c22d8f",
+   "ar-c009daf12bee34aca126"
+  ],
+  "ar-d187551ec73db6bf7b64": [
+   "ar-0cc9bd8a19dfe4c22d8f",
+   "ar-ff519e82f7933418e756"
+  ],
+  "ar-ff519e82f7933418e756": [
+   "ar-d187551ec73db6bf7b64",
+   "ar-ac1bd145d16fd199bfe0"
+  ],
+  "ar-c009daf12bee34aca126": [
+   "ar-eafa77a1b36bbbb76b94"
+  ],
+  "ar-ac1bd145d16fd199bfe0": [
+   "ar-ff519e82f7933418e756"
+  ]
+ }
 }

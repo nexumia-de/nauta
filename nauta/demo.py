@@ -5,7 +5,7 @@ TLS against it. Only the endpoints Nauta calls are implemented, with the
 answers shaped like Navidrome's (docs/subsonic-api.md). Covers and audio
 are made here: colour gradients and sine tones. DemoMeTube stands in for
 the download server and DemoYouTubeMusic for YouTube Music's search of
-albums and playlists (docs/downloads.md). No GTK."""
+albums and playlists (docs/downloads.md), in demo_metube.py. No GTK."""
 import base64
 import colorsys
 import hashlib
@@ -37,6 +37,11 @@ class DemoServer:
         self.artists = {a["id"]: a for a in self.library["artists"]}
         self.requests = []     # (method, path, form) seen
         self.scrobbles = []    # (song id, submission)
+        # Changed by star/unstar and the playlist calls, like a server.
+        self.starred = set(self.library.get("starred", []))
+        self.playlists = [dict(p, entries=list(p["entries"]))
+                          for p in self.library["playlists"]]
+        self._next_playlist = 1
         # "user:password": like Pangolin's header authentication, refuse
         # requests without this HTTP Basic auth (401 with a challenge).
         self.proxy_basic = None
@@ -79,8 +84,10 @@ class DemoServer:
     def album_songs(self, album_id):
         return [s for s in self.library["songs"] if s["albumId"] == album_id]
 
-    def answer(self, method, form):
-        """(JSON answer) or (bytes, content type) for /rest/<method>."""
+    def answer(self, method, form, lists=None):
+        """(JSON answer) or (bytes, content type) for /rest/<method>.
+        `lists` holds every value of repeated fields (id=…&id=…)."""
+        lists = lists or {}
         lib = self.library
         if method == "getOpenSubsonicExtensions":
             return self.response(openSubsonicExtensions=[
@@ -92,9 +99,15 @@ class DemoServer:
         if method == "ping":
             return self.response()
         if method == "getAlbumList2":
-            albums = list(lib["albums"])
+            albums = [self._starred(a) for a in lib["albums"]]
             kind = form.get("type", "newest")
-            if kind == "newest":
+            if kind == "starred":
+                albums = [a for a in albums if a["id"] in self.starred]
+            elif kind == "recent":
+                albums = [a for a in albums if a["playCount"]]
+            if kind == "random":
+                albums.sort(key=lambda a: hashlib.sha1(a["id"].encode()).digest())
+            elif kind == "newest":
                 albums.sort(key=lambda a: a["created"], reverse=True)
             elif kind == "frequent":
                 albums.sort(key=lambda a: a["playCount"], reverse=True)
@@ -115,20 +128,24 @@ class DemoServer:
             if artist is None:
                 return self.error(70, "Artist not found")
             albums = [a for a in lib["albums"] if a["artistId"] == artist["id"]]
-            return self.response(artist=dict(artist, album=albums))
+            return self.response(artist=self._starred(dict(artist, album=albums)))
         if method == "getAlbum":
             album = self.albums.get(form.get("id"))
             if album is None:
                 return self.error(70, "Album not found")
-            return self.response(album=dict(album, song=self.album_songs(album["id"])))
+            return self.response(album=self._starred(dict(
+                album, song=[self._starred(s) for s in self.album_songs(album["id"])])))
         if method == "getPlaylists":
             return self.response(playlists={"playlist": [
-                self._playlist(p, False) for p in lib["playlists"]]})
+                self._playlist(p, False) for p in self.playlists]})
         if method == "getPlaylist":
-            for p in lib["playlists"]:
-                if p["id"] == form.get("id"):
-                    return self.response(playlist=self._playlist(p, True))
-            return self.error(70, "Playlist not found")
+            playlist = self._find_playlist(form.get("id"))
+            if playlist is None:
+                return self.error(70, "Playlist not found")
+            return self.response(playlist=self._playlist(playlist, True))
+        answer = self._edit(method, form, lists)
+        if answer is not None:
+            return answer
         if method == "search3":
             query = (form.get("query") or "").lower().strip('"')
 
@@ -137,7 +154,8 @@ class DemoServer:
             return self.response(searchResult3={
                 "artist": [a for a in lib["artists"] if hit(a["name"])],
                 "album": [a for a in lib["albums"] if hit(a["name"], a["artist"])],
-                "song": [s for s in lib["songs"] if hit(s["title"])][:40]})
+                "song": [self._starred(s) for s in lib["songs"]
+                         if hit(s["title"])][:40]})
         if method == "scrobble":
             self.scrobbles.append((form.get("id"), form.get("submission", "true") == "true"))
             return self.response()
@@ -150,12 +168,121 @@ class DemoServer:
             return self.audio(form["id"]), "audio/wav"
         return self.error(0, f"Not in the demo: {method}")
 
+    # --- likes, playlists, discovery and lyrics -------------------------
+
+    def _edit(self, method, form, lists):
+        """The calls that change or find more than the library: likes,
+        playlists, similar songs and artists, top songs, lyrics. None for
+        other methods."""
+        lib = self.library
+        if method in ("star", "unstar"):
+            ids = lists.get("id", []) + lists.get("albumId", []) + \
+                lists.get("artistId", [])
+            if not ids:
+                return self.error(10, "Required id parameter is missing")
+            for i in ids:
+                (self.starred.add if method == "star" else self.starred.discard)(i)
+            return self.response()
+        if method == "getStarred2":
+            return self.response(starred2={
+                "artist": [self._starred(a) for a in lib["artists"]
+                           if a["id"] in self.starred],
+                "album": [self._starred(a) for a in lib["albums"]
+                          if a["id"] in self.starred],
+                "song": [self._starred(s) for s in lib["songs"]
+                         if s["id"] in self.starred]})
+        if method == "createPlaylist":
+            ids = lists.get("songId", [])
+            if form.get("playlistId"):
+                playlist = self._find_playlist(form["playlistId"])
+                if playlist is None:
+                    return self.error(70, "playlist not found")
+                playlist["entries"] = list(ids)
+            elif form.get("name"):
+                playlist = {"id": f"pl-new-{self._next_playlist}",
+                            "name": form["name"], "owner": lib["user"],
+                            "public": False, "entries": list(ids)}
+                self._next_playlist += 1
+                self.playlists.append(playlist)
+            else:
+                return self.error(0, "required parameter name is missing")
+            return self.response(playlist=self._playlist(playlist, True))
+        if method == "updatePlaylist":
+            playlist = self._find_playlist(form.get("playlistId"))
+            if playlist is None:
+                return self.error(70, "playlist not found")
+            if "name" in form:
+                playlist["name"] = form["name"]
+            remove = {int(i) for i in lists.get("songIndexToRemove", [])}
+            playlist["entries"] = [e for i, e in enumerate(playlist["entries"])
+                                   if i not in remove] + lists.get("songIdToAdd", [])
+            return self.response()
+        if method == "deletePlaylist":
+            playlist = self._find_playlist(form.get("id"))
+            if playlist is None:
+                return self.error(70, "playlist not found")
+            self.playlists.remove(playlist)
+            return self.response()
+        if method == "getSimilarSongs2":
+            return self.response(similarSongs2={"song": self._similar_songs(
+                form.get("id"), int(form.get("count") or 50))})
+        if method == "getTopSongs":
+            artist = next((a for a in lib["artists"]
+                           if a["name"] == form.get("artist")), None)
+            songs = [] if artist is None else sorted(
+                (s for s in lib["songs"] if s["artistId"] == artist["id"]),
+                key=lambda s: hashlib.sha1(s["id"].encode()).digest())
+            return self.response(topSongs={"song": [
+                self._starred(s) for s in songs[:int(form.get("count") or 50)]]})
+        if method == "getArtistInfo2":
+            similar = lib.get("similar", {}).get(form.get("id"), [])
+            return self.response(artistInfo2={"similarArtist": [
+                self._starred(self.artists[i]) for i in similar]})
+        if method == "getLyricsBySongId":
+            if form.get("id") not in self.songs:
+                return self.error(70, "Song not found")
+            lyrics = lib.get("lyrics", {}).get(form["id"])
+            song = self.songs[form["id"]]
+            structured = [] if lyrics is None else [{
+                "displayArtist": song["artist"], "displayTitle": song["title"],
+                "lang": "eng", "synced": lyrics["synced"],
+                "line": [{"start": start, "value": value} if lyrics["synced"]
+                         else {"value": value} for start, value in lyrics["lines"]]}]
+            return self.response(lyricsList={"structuredLyrics": structured}
+                                 if structured else {})
+        return None
+
+    def _similar_songs(self, item_id, count):
+        """Songs of the similar artists of a song's, album's or artist's
+        artist, never the item's own songs."""
+        lib = self.library
+        artist_id = (self.songs.get(item_id) or self.albums.get(item_id)
+                     or {}).get("artistId") or item_id
+        if artist_id not in self.artists:
+            return []
+        others = set(lib.get("similar", {}).get(artist_id, []))
+        songs = [s for s in lib["songs"] if s["artistId"] in others]
+        songs.sort(key=lambda s: hashlib.sha1(s["id"].encode()).digest())
+        return [self._starred(s) for s in songs[:count]]
+
+    def _starred(self, item):
+        """The item with "starred" when it is liked, like Navidrome."""
+        item = {k: v for k, v in item.items() if k != "starred"}
+        if item["id"] in self.starred:
+            item["starred"] = "2026-11-01T12:00:00Z"
+        return item
+
+    def _find_playlist(self, playlist_id):
+        return next((p for p in self.playlists if p["id"] == playlist_id), None)
+
     def _playlist(self, playlist, entries):
-        songs = [self.songs[i] for i in playlist["entries"]]
+        songs = [self._starred(self.songs[i]) for i in playlist["entries"]]
         out = {"id": playlist["id"], "name": playlist["name"],
                "owner": playlist["owner"], "public": playlist["public"],
-               "songCount": len(songs), "coverArt": songs[0]["coverArt"],
+               "songCount": len(songs), "readonly": False,
                "duration": sum(s["duration"] for s in songs)}
+        if songs:
+            out["coverArt"] = songs[0]["coverArt"]
         if entries:
             out["entry"] = songs
         return out
@@ -209,220 +336,6 @@ def _server(handler, tls):
     return httpd, "https"
 
 
-class DemoMeTube(DemoServer):
-    """A stand-in for MeTube (docs/downloads.md): /version, /browse with
-    the invented search results, albums and playlists of
-    tests/data/demo/metube.json, /add (also of a whole album or
-    playlist), /history and /delete. A download finishes after three looks at the
-    history; one whose title contains "unavailable" fails."""
-
-    def __init__(self, directory, tls=None):
-        self.data = json.loads((Path(directory) / "metube.json").read_text())
-        self.collections = {c["url"]: c for c in self.data.get("collections", [])}
-        # Album page links (…/browse/MPREb_…) of the albums.
-        self.album_pages = {f"https://music.youtube.com/browse/{c['browse_id']}": c
-                            for c in self.data.get("collections", [])
-                            if c.get("browse_id")}
-        self.requests = []
-        self.queue, self.done = [], []
-        self.clock = 0
-        self.lock = threading.Lock()
-        # "name=value": refuse every request without this cookie, like a
-        # reverse proxy with its own login (Pangolin answers 401).
-        self.proxy_cookie = None
-        self.proxy_basic = None
-        server = self
-
-        class Handler(_MeTubeHandler):
-            owner = server
-
-        self.httpd, self.scheme = _server(Handler, tls)
-
-    def answer(self, method, path, body):
-        if method == "GET" and path == "version":
-            return self.data["version"]
-        if method == "GET" and path == "history":
-            return self._history()
-        if method != "POST":
-            return None
-        if path == "browse":
-            return self._browse(body.get("url") or "", body.get("playlist_item_limit") or 0)
-        if path == "add":
-            return self._add(body)
-        if path == "delete":
-            ids = set(body.get("ids") or [])
-            with self.lock:
-                if body.get("where") == "queue":
-                    for item in [i for i in self.queue if i["url"] in ids]:
-                        self.queue.remove(item)
-                        self.done.append(dict(item, status="error", msg="Canceled"))
-                else:
-                    self.done = [i for i in self.done if i["url"] not in ids]
-            return {"status": "ok"}
-        return None
-
-    def _entry(self, url):
-        return next((e for source in self.data["results"].values()
-                     for e in source if e["url"] == url), None)
-
-    def _browse(self, url, limit):
-        if "/browse/MPREb_" in url:
-            # Like MeTube: yt-dlp answers an album page with a link to the
-            # album's playlist, which /browse (extract_flat) doesn't follow.
-            return {"status": "error", "msg": "This URL points to a single video, "
-                    "not a channel or playlist. Use Download instead."}
-        collection = self.collections.get(url)
-        if collection is not None:
-            entries = [{k: v for k, v in self._entry(u).items()
-                        if not k.startswith("_")} for u in collection["tracks"]]
-            return {"status": "ok", "title": collection["title"],
-                    "entries": entries[:limit or None]}
-        if url.startswith("ytsearch"):
-            source, query = "youtube", url.partition(":")[2]
-        elif url.startswith("https://music.youtube.com/search?"):
-            source = "youtube-music"
-            query = dict(parse_qsl(urlsplit(url).query)).get("q", "")
-        else:
-            return {"status": "error", "msg": "This URL points to a single video, "
-                    "not a channel or playlist. Use Download instead."}
-        words = query.lower().split()
-        # "_artist": yt-dlp's flat YouTube Music results have the song
-        # title only, but YouTube matches the artist too.
-        entries = [{k: v for k, v in e.items() if not k.startswith("_")}
-                   for e in self.data["results"][source]
-                   if any(w in f"{e['title']} {e.get('_artist', '')}".lower()
-                          for w in words)]
-        if not entries:
-            return {"status": "error", "msg": "No entries found at this URL."}
-        return {"status": "ok", "title": query, "entries": entries[:limit or None]}
-
-    def _add(self, body):
-        if body.get("download_type") != "audio" or not body.get("quality"):
-            return {"status": "error", "msg": "Bad request"}
-        url = body.get("url") or ""
-        # /add follows the album page's link to its playlist.
-        collection = self.collections.get(url) or self.album_pages.get(url)
-        if collection is not None:
-            # Like MeTube: every song of the album or playlist is queued.
-            for track in collection["tracks"]:
-                self._queue(track, self._entry(track), body)
-            return {"status": "ok"}
-        entry = self._entry(url)
-        if entry is None:
-            return {"status": "error", "msg": "Unsupported URL"}
-        return self._queue(url, entry, body)
-
-    def _queue(self, url, entry, body):
-        vid = dict(parse_qsl(urlsplit(url).query)).get("v", url)
-        with self.lock:
-            if any(i["id"] == vid for i in self.queue):
-                return {"status": "ok", "msg": f"Already in queue: {entry['title']}"}
-            self.clock += 1
-            # MeTube keys downloads by the video's webpage URL.
-            self.queue.append({
-                "id": vid, "title": entry["title"],
-                "url": f"https://www.youtube.com/watch?v={vid}",
-                "download_type": "audio", "format": body.get("format"),
-                "status": "queued", "percent": None, "msg": None,
-                "timestamp": self.clock, "looks": 0})
-        return {"status": "ok"}
-
-    def _history(self):
-        with self.lock:
-            for item in list(self.queue):
-                item["looks"] += 1
-                if item["looks"] >= 3:
-                    self.queue.remove(item)
-                    failed = "unavailable" in item["title"].lower()
-                    self.done.append(dict(
-                        item, status="error" if failed else "finished",
-                        percent=None if failed else 100,
-                        msg="Video unavailable" if failed else None))
-                else:
-                    item.update(status="downloading", percent=item["looks"] * 40.0)
-            return {"queue": [dict(i) for i in self.queue], "pending": [],
-                    "done": [dict(i) for i in self.done]}
-
-
-class DemoYouTubeMusic(DemoServer):
-    """A stand-in for YouTube Music's search API (nauta.ytmusic): POST
-    /youtubei/v1/search answers the albums or playlists of
-    tests/data/demo/metube.json, in the shape nauta.ytmusic reads."""
-
-    def __init__(self, directory):
-        self.data = json.loads((Path(directory) / "metube.json").read_text())
-        self.requests = []
-        self.headers = []      # of every request, to check what was sent
-        self.proxy_cookie = self.proxy_basic = None
-        server = self
-
-        class Handler(_MeTubeHandler):
-            owner = server
-
-            def _handle(self, raw):
-                server.headers.append(dict(self.headers))
-                super()._handle(raw)
-
-        self.httpd, self.scheme = _server(Handler, None)
-
-    def answer(self, method, path, body):
-        if (method, path) == ("POST", "youtubei/v1/browse"):
-            return self._album_page(body.get("browseId") or "")
-        if (method, path) != ("POST", "youtubei/v1/search"):
-            return None
-        from nauta.ytmusic import ALBUMS, PLAYLISTS, SECTIONS
-        # The demo's playlists are community playlists; no featured ones.
-        kind = {SECTIONS[ALBUMS][0]: ALBUMS,
-                SECTIONS[PLAYLISTS][1]: PLAYLISTS}.get(body.get("params"))
-        words = (body.get("query") or "").lower().split()
-        items = []
-        for c in self.data.get("collections", []):
-            haystack = f"{c['title']} {c['subtitle']} {c.get('_words', '')}".lower()
-            if c["kind"] != kind or not any(w in haystack for w in words):
-                continue
-            playlist_id = dict(parse_qsl(urlsplit(c["url"]).query))["list"]
-            browse_id = c.get("browse_id") or "VL" + playlist_id
-            item = {
-                "flexColumns": [
-                    {"musicResponsiveListItemFlexColumnRenderer": {
-                        "text": {"runs": [{"text": c["title"]}]}}},
-                    {"musicResponsiveListItemFlexColumnRenderer": {
-                        "text": {"runs": [{"text": t} for t in
-                                          _split_runs(c["subtitle"])]}}}],
-                "navigationEndpoint": {"browseEndpoint": {"browseId": browse_id}}}
-            if c.get("browse_id") and not c.get("_no_play_button"):
-                # An album's play button plays its playlist.
-                item["overlay"] = {"musicItemThumbnailOverlayRenderer": {"content": {
-                    "musicPlayButtonRenderer": {"playNavigationEndpoint": {
-                        "watchPlaylistEndpoint": {"playlistId": playlist_id}}}}}}
-            items.append({"musicResponsiveListItemRenderer": item})
-        sections = [{"musicShelfRenderer": {"contents": items}}] if items else \
-            [{"itemSectionRenderer": {"contents": []}}]
-        return {"contents": {"tabbedSearchResultsRenderer": {"tabs": [
-            {"tabRenderer": {"content": {"sectionListRenderer": {
-                "contents": sections}}}}]}}}
-
-    def _album_page(self, browse_id):
-        """The part of an album page nauta.ytmusic reads: its canonical
-        URL, the album's playlist."""
-        album = next((c for c in self.data.get("collections", [])
-                      if c.get("browse_id") == browse_id), None)
-        if album is None:
-            return {"error": {"code": 404}}
-        return {"microformat": {"microformatDataRenderer": {
-            "urlCanonical": album["url"]}}}
-
-
-def _split_runs(line):
-    """"Album • Artist • 2024" as YouTube Music's text runs."""
-    runs = []
-    for i, part in enumerate(line.split(" • ")):
-        if i:
-            runs.append(" • ")
-        runs.append(part)
-    return runs
-
-
 def _png(width, height, raw):
     def chunk(kind, data):
         return (struct.pack(">I", len(data)) + kind + data
@@ -465,14 +378,17 @@ class _Handler(BaseHTTPRequestHandler):
             return
         parts = urlsplit(self.path)
         # Like Navidrome's postFormToQueryParams: query and body together.
-        form = dict(parse_qsl(parts.query))
-        form.update(parse_qsl(body.decode("utf-8", "replace")))
+        pairs = parse_qsl(parts.query) + parse_qsl(body.decode("utf-8", "replace"))
+        form = dict(pairs)
+        lists = {}
+        for key, value in pairs:
+            lists.setdefault(key, []).append(value)
         method = parts.path.rsplit("/", 1)[-1].removesuffix(".view")
         self.owner.requests.append((self.command, self.path, form))
         if not parts.path.startswith("/rest/"):
             self._send(404, b"not found", "text/plain")
             return
-        answer = self.owner.answer(method, form)
+        answer = self.owner.answer(method, form, lists)
         if isinstance(answer, tuple):
             self._send_media(*answer)
         else:
@@ -501,24 +417,5 @@ class _Handler(BaseHTTPRequestHandler):
             self._send(200, data, content_type, [("Accept-Ranges", "bytes")])
 
 
-class _MeTubeHandler(_Handler):
-    def _handle(self, raw):
-        if self._proxy_refuses():
-            return
-        path = urlsplit(self.path).path.strip("/")
-        cookie = self.owner.proxy_cookie
-        if cookie and cookie not in (self.headers.get("Cookie") or ""):
-            self._send(401, b"Unauthorized", "text/plain")
-            return
-        try:
-            body = json.loads(raw or b"{}")
-        except ValueError:
-            self._send(400, b"Invalid JSON request body", "text/plain")
-            return
-        self.owner.requests.append((self.command, path, body))
-        answer = self.owner.answer(self.command, path, body)
-        if answer is None:
-            self._send(404, b"Not Found", "text/plain")
-        else:
-            # Like MeTube, which answers most calls as text/plain.
-            self._send(200, json.dumps(answer).encode(), "text/plain")
+# The MeTube and YouTube Music stand-ins live in demo_metube.py.
+from nauta.demo_metube import DemoMeTube, DemoYouTubeMusic  # noqa: E402,F401

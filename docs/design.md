@@ -26,10 +26,15 @@ branding colours are `#9fdde6` (light) and `#0d4f59` (dark).
 |---|---|---|
 | Library | Albums / Artists / Playlists in an `AdwViewStack`, switcher at the bottom (`AdwViewSwitcherBar`) | switcher in the header |
 | Albums | two columns of cover cards (`GtkGridView`, recycled) | as many columns as fit |
-| Album, playlist | cover 200 px, title, artist (button to the artist), details, Play and Shuffle, song list | same, clamped to 900 px |
-| Artist | name, album cards with year | same |
+| Albums header | sort button (`view-sort-descending-symbolic`) beside the main menu, Albums view only | same |
+| Playlists | Liked Songs and New Playlist rows, then the playlists (`boxed-list`) | clamped to 800 px |
+| Album, playlist | cover 200 px, title, artist (button to the artist), details; star (album), Play and Shuffle pills, "⋮" in one row; song list with "⋮" per row | same, clamped to 900 px |
+| Liked Songs | star placeholder as cover, Play and Shuffle, songs, liked albums and artists | same |
+| Artist | name (`title-1`), star and Artist Radio pill, Popular (5 songs), album cards with year, Fans Also Like | same |
 | Search | search entry in the header; artists, albums, songs | same |
-| Now Playing | cover, title, slider, controls, queue | clamped to 600 px |
+| Now Playing | cover, title and artist left-aligned with the star, slider, shuffle / previous / play / next / repeat (active modes in the accent colour), sleep timer note, Next Up with Clear; Lyrics and "⋮" in the header | clamped to 600 px |
+| Lyrics | lines as `title-4`, dimmed; the current line in the accent colour | clamped to 700 px |
+| Add to Playlist | `AdwDialog` (bottom sheet on phones): New Playlist…, the editable playlists | 420×520 |
 | Find New Music | search entry in the header, YouTube Music / YouTube toggle and, for YouTube Music, Songs / Albums / Playlists (linked buttons, the second row in a revealer); songs with a download button, albums and playlists as rows that open their page; Downloads button in the header | clamped to 800 px |
 | Album or playlist | title (`title-2`), details and song count (`dimmed`), "Download All" pill (`suggested-action`), songs with a download button each | clamped to 800 px |
 | Downloads | MeTube's running and finished downloads with cancel / remove | clamped to 800 px |
@@ -38,6 +43,11 @@ branding colours are `#9fdde6` (light) and `#0d4f59` (dark).
 Every page is pushed onto one `AdwNavigationView`, so the swipe back
 closes it. The player bar sits below the navigation view, outside the
 pages, and hides on Now Playing.
+
+Song rows: "⋮" (`view-more-symbolic`, flat) at the end; a long press
+or right click opens the same `GtkPopoverMenu`. Swiping a row right to
+left uncovers an icon on `.nauta-swipe` (accent background); see
+[library features](library.md#swipe-swipepy).
 
 Covers are rounded (`.nauta-cover`, 8 px) on a faint tile until they
 load; the placeholder is a symbolic icon. No Navidrome branding.

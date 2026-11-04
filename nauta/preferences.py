@@ -3,7 +3,7 @@ form) and the account, and the download server (docs/downloads.md)."""
 from gi.repository import Adw, GLib, Gtk
 from phosh_toolkit.style import style_row
 
-from nauta import settings
+from nauta import loudness, settings
 from nauta.find import download_form, format_row
 from nauta.setup import connection_form
 
@@ -35,6 +35,18 @@ class PreferencesDialog(Adw.PreferencesDialog):
             quality.add(row)
             self.quality_rows[attr] = row
         general.add(quality)
+        playback = Adw.PreferencesGroup(title="Playback")
+        modes = [value for value, _ in loudness.MODES]
+        self.loudness_row = Adw.ComboRow(
+            title="Volume Normalisation",
+            subtitle="Uses the songs' ReplayGain tags; takes effect with the "
+                     "next song",
+            model=Gtk.StringList.new([name for _, name in loudness.MODES]))
+        self.loudness_row.set_selected(modes.index(account.replay_gain)
+                                       if account.replay_gain in modes else 0)
+        self.loudness_row.connect("notify::selected", self._on_loudness, modes)
+        playback.add(self.loudness_row)
+        general.add(playback)
         self.add(general)
 
         connection_page = Adw.PreferencesPage(
@@ -65,6 +77,11 @@ class PreferencesDialog(Adw.PreferencesDialog):
         self.add(connection_page)
         self.downloads_page = self._downloads_page()
         self.add(self.downloads_page)
+
+    def _on_loudness(self, row, pspec, modes):
+        account = self.window.connection.account
+        account.replay_gain = modes[row.get_selected()]
+        self.window.connection.save()
 
     def _downloads_page(self):
         """MeTube: where it is and what it makes."""

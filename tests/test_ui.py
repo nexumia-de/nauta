@@ -15,47 +15,23 @@ import gi  # noqa: E402
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-gi.require_version("Gst", "1.0")
-from gi.repository import Adw, Gst, Gtk  # noqa: E402
+from gi.repository import Adw, Gtk  # noqa: E402
 from phosh_toolkit import connection_form, router  # noqa: E402
 from phosh_toolkit.http import Client  # noqa: E402
-from phosh_toolkit.media import Media  # noqa: E402
 
-from nauta import connection, keyring, player, settings, setup  # noqa: E402
+from conftest import visible  # noqa: E402
+from nauta import connection, keyring, settings, setup  # noqa: E402
 from nauta.demo import PASSWORD  # noqa: E402
 
-
-@pytest.fixture(scope="module")
-def app():
-    """One application for all tests: a second one with the same id can't
-    register on the session bus."""
-    from nauta.main import Application
-    application = Application()
-    application.register(None)
-    Adw.init()
-    yield application
-
-
-@pytest.fixture(autouse=True)
-def quiet(monkeypatch):
-    """No sound card in CI: a clocked fakesink instead."""
-    def media(url, video=False):
-        m = Media(url, video=False)
-        sink = Gst.ElementFactory.make("fakesink", None)
-        sink.props.sync = True
-        m.pipeline.props.audio_sink = sink
-        return m
-    monkeypatch.setattr(player, "Media", media)
-
-
-def visible(window):
-    return window.nav.get_visible_page()
+# No sound card in CI (conftest.quiet).
+pytestmark = pytest.mark.usefixtures("quiet")
 
 
 def test_setup_sign_in_browse_and_play(app, mtls_demo, pki, trust, monkeypatch):
     from nauta.library import MainPage
     from nauta.nowplaying import NowPlayingPage
-    from nauta.pages import AlbumPage, ArtistPage, PlaylistPage, SearchPage
+    from nauta.artist import ArtistPage
+    from nauta.pages import AlbumPage, PlaylistPage, SearchPage
     from nauta.preferences import PreferencesDialog
     from nauta.window import Window
 
@@ -129,7 +105,8 @@ def test_setup_sign_in_browse_and_play(app, mtls_demo, pki, trust, monkeypatch):
     assert now.title.get_label() == album.album["song"][1]["title"]
     now.play.emit("clicked")
     run_until(lambda: not window.player.playing, 5)
-    now.queue.emit("row-activated", now.queue.get_row_at_index(2))
+    # Next Up lists the songs after the current one.
+    now.queue.list.emit("row-activated", now.queue.list.get_row_at_index(0))
     run_until(lambda: now.title.get_label() == album.album["song"][2]["title"])
     window.nav.pop()
     assert window.bar.get_reveal_child()
