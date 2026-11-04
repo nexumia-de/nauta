@@ -37,17 +37,21 @@ def demo_connection():
 
 
 def demo_downloads():
-    """NAUTA_DEMO: the download server is nauta.demo's MeTube stand-in."""
+    """NAUTA_DEMO: the download server is nauta.demo's MeTube stand-in,
+    and YouTube Music's search its stand-in too."""
     from nauta import downloads, settings
-    from nauta.demo import DemoMeTube
+    from nauta.demo import DemoMeTube, DemoYouTubeMusic
     server = DemoMeTube(os.environ["NAUTA_DEMO"]).start()
+    youtube_music = DemoYouTubeMusic(os.environ["NAUTA_DEMO"]).start()
     store = settings.DownloadStore(
         Path(tempfile.mkdtemp(prefix="nauta-demo-")) / "downloads.json")
     account = store.load()
     account.remote_url = server.url
     store.save(account)
     dl = downloads.Downloads(store, watch=False)
+    dl.youtube_music.base_url = youtube_music.url
     dl.demo_server = server
+    dl.demo_youtube_music = youtube_music
     return dl
 
 

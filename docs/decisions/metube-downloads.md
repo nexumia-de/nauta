@@ -9,6 +9,8 @@ generated: { by: claude-code/2.1.318, at: 2026-11-04T09:30:00Z }
 # Status
 
 Accepted (2026-11-04), at the owner's request, in milestone M2.
+Amended the same day: albums and playlists are searched from the phone
+([decision](youtube-music-search.md)).
 
 # Context
 

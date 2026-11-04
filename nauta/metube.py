@@ -9,18 +9,29 @@ which asks for the client certificate and, if set up, its own login
 
 Search: MeTube has no search call, but /browse lists the entries of any
 yt-dlp "playlist" without downloading, and a YouTube Music search URL
-or a "ytsearchN:" prefix is one."""
+or a "ytsearchN:" prefix is one. Albums and playlists are found on the
+phone (nauta.ytmusic); /browse lists their songs and /add downloads all
+of them at once."""
 import json
 from urllib.parse import parse_qs, quote_plus, urlsplit
 
 from phosh_toolkit.http import SERVER, Client, HttpError
 
 from nauta import USER_AGENT
+from nauta.ytmusic import ALBUMS, PLAYLISTS
 
 YOUTUBE_MUSIC = "youtube-music"
 YOUTUBE = "youtube"
 SOURCES = ((YOUTUBE_MUSIC, "YouTube Music"), (YOUTUBE, "YouTube"))
 RESULTS = 20
+# What to search for on YouTube Music: songs through MeTube, albums and
+# playlists through nauta.ytmusic. YouTube searches videos only.
+SONGS = "songs"
+KINDS = ((SONGS, "Songs"), (ALBUMS, "Albums"), (PLAYLISTS, "Playlists"))
+# Songs of an album or playlist listed at most; "Download All" gets all.
+COLLECTION_LIMIT = 200
+YOUTUBE_HOSTS = ("music.youtube.com", "www.youtube.com", "youtube.com",
+                 "m.youtube.com")
 # MeTube's /browse answer when a search finds nothing.
 NO_ENTRIES = "No entries found at this URL."
 # Audio formats Nauta offers (MeTube's format catalog, type "audio").
@@ -38,6 +49,25 @@ def search_url(query, source=YOUTUBE_MUSIC, count=RESULTS):
     if source == YOUTUBE:
         return f"ytsearch{count}:{query}"
     return f"https://music.youtube.com/search?q={quote_plus(query)}#songs"
+
+
+def collection_link(text):
+    """The album or playlist a pasted YouTube (Music) link points to, as a
+    URL for /browse and /add; "" for anything else."""
+    text = text.strip()
+    if " " in text or "://" not in text:
+        return ""
+    parts = urlsplit(text)
+    if parts.scheme not in ("http", "https") or parts.hostname not in YOUTUBE_HOSTS:
+        return ""
+    host = "https://music.youtube.com" if parts.hostname == "music.youtube.com" \
+        else "https://www.youtube.com"
+    playlist = (parse_qs(parts.query).get("list") or [""])[0]
+    if playlist and parts.path in ("/playlist", "/watch"):
+        return f"{host}/playlist?list={quote_plus(playlist)}"
+    if parts.path.startswith("/browse/MPREb_"):
+        return f"{host}{parts.path}"
+    return ""
 
 
 def video_id(url):
@@ -89,12 +119,25 @@ class MeTube:
             raise HttpError(SERVER, answer.get("msg") or "Search failed")
         return answer.get("entries") or []
 
+    def browse(self, url, count=COLLECTION_LIMIT):
+        """The songs of an album or playlist: (title, [{"url", "title",
+        "duration"}])."""
+        answer = self._json("POST", "browse", {
+            "url": url, "playlist_item_limit": count}, timeout=90)
+        if answer.get("status") != "ok":
+            if answer.get("msg") == NO_ENTRIES:
+                return answer.get("title") or "", []
+            raise HttpError(SERVER, answer.get("msg") or "Can't list the songs")
+        return answer.get("title") or "", answer.get("entries") or []
+
     def add(self, url, audio_format="m4a"):
-        """Queue the audio of `url` with tags and cover; MeTube starts it."""
+        """Queue the audio of `url` with tags and cover; MeTube starts it.
+        For an album or playlist MeTube queues each song (with its track
+        number from the playlist) before it answers, which takes a while."""
         answer = self._json("POST", "add", {
             "url": url, "download_type": "audio", "codec": "auto",
             "format": audio_format, "quality": "best",
-            "audio_tags": "with_cover", "auto_start": True})
+            "audio_tags": "with_cover", "auto_start": True}, timeout=120)
         if answer.get("status") != "ok":
             raise HttpError(SERVER, answer.get("msg") or "Download failed")
         return answer

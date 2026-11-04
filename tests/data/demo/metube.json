@@ -1,5 +1,5 @@
 {
- "_comment": "Invented search results for the MeTube stand-in (nauta/demo.py), shaped like MeTube's /browse answer. Not recorded from YouTube.",
+ "_comment": "Invented search results, albums and playlists for the MeTube and YouTube Music stand-ins (nauta/demo.py), shaped like MeTube's /browse answer. Not recorded from YouTube.",
  "version": {
   "yt-dlp": "2026.10.31",
   "version": "2026.11.01"
@@ -119,5 +119,43 @@
     "duration": 303
    }
   ]
- }
+ },
+ "collections": [
+  {
+   "url": "https://music.youtube.com/browse/MPREb_demoHarbour01",
+   "kind": "albums",
+   "title": "Saltwater Letters",
+   "subtitle": "Album • Harbour Lights • 2024",
+   "tracks": [
+    "https://music.youtube.com/watch?v=demo0000000",
+    "https://music.youtube.com/watch?v=demo0000001",
+    "https://music.youtube.com/watch?v=demo0000002"
+   ]
+  },
+  {
+   "url": "https://music.youtube.com/browse/MPREb_demoOkafor001",
+   "kind": "albums",
+   "title": "Glass Orchard",
+   "subtitle": "EP • Mira Okafor • 2023",
+   "tracks": [
+    "https://music.youtube.com/watch?v=demo0000003",
+    "https://music.youtube.com/watch?v=demo0000004"
+   ]
+  },
+  {
+   "url": "https://music.youtube.com/playlist?list=PLdemoCoastal00001",
+   "kind": "playlists",
+   "title": "Coastal Evenings",
+   "subtitle": "Playlist • Robin • 6 songs",
+   "_words": "harbour lights coastal evening sea",
+   "tracks": [
+    "https://music.youtube.com/watch?v=demo0000001",
+    "https://music.youtube.com/watch?v=demo0000005",
+    "https://music.youtube.com/watch?v=demo0000006",
+    "https://music.youtube.com/watch?v=demo0000007",
+    "https://music.youtube.com/watch?v=demo0000008",
+    "https://music.youtube.com/watch?v=demo0000009"
+   ]
+  }
+ ]
 }

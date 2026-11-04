@@ -4,7 +4,8 @@ library (tests/data/demo). The store screenshots use it
 TLS against it. Only the endpoints Nauta calls are implemented, with the
 answers shaped like Navidrome's (docs/subsonic-api.md). Covers and audio
 are made here: colour gradients and sine tones. DemoMeTube stands in for
-the download server (docs/downloads.md). No GTK."""
+the download server and DemoYouTubeMusic for YouTube Music's search of
+albums and playlists (docs/downloads.md). No GTK."""
 import base64
 import colorsys
 import hashlib
@@ -210,12 +211,14 @@ def _server(handler, tls):
 
 class DemoMeTube(DemoServer):
     """A stand-in for MeTube (docs/downloads.md): /version, /browse with
-    the recorded search results of tests/data/demo/metube.json, /add,
-    /history and /delete. A download finishes after three looks at the
+    the invented search results, albums and playlists of
+    tests/data/demo/metube.json, /add (also of a whole album or
+    playlist), /history and /delete. A download finishes after three looks at the
     history; one whose title contains "unavailable" fails."""
 
     def __init__(self, directory, tls=None):
         self.data = json.loads((Path(directory) / "metube.json").read_text())
+        self.collections = {c["url"]: c for c in self.data.get("collections", [])}
         self.requests = []
         self.queue, self.done = [], []
         self.clock = 0
@@ -254,7 +257,17 @@ class DemoMeTube(DemoServer):
             return {"status": "ok"}
         return None
 
+    def _entry(self, url):
+        return next((e for source in self.data["results"].values()
+                     for e in source if e["url"] == url), None)
+
     def _browse(self, url, limit):
+        collection = self.collections.get(url)
+        if collection is not None:
+            entries = [{k: v for k, v in self._entry(u).items()
+                        if not k.startswith("_")} for u in collection["tracks"]]
+            return {"status": "ok", "title": collection["title"],
+                    "entries": entries[:limit or None]}
         if url.startswith("ytsearch"):
             source, query = "youtube", url.partition(":")[2]
         elif url.startswith("https://music.youtube.com/search?"):
@@ -278,10 +291,18 @@ class DemoMeTube(DemoServer):
         if body.get("download_type") != "audio" or not body.get("quality"):
             return {"status": "error", "msg": "Bad request"}
         url = body.get("url") or ""
-        entry = next((e for source in self.data["results"].values()
-                      for e in source if e["url"] == url), None)
+        collection = self.collections.get(url)
+        if collection is not None:
+            # Like MeTube: every song of the album or playlist is queued.
+            for track in collection["tracks"]:
+                self._queue(track, self._entry(track), body)
+            return {"status": "ok"}
+        entry = self._entry(url)
         if entry is None:
             return {"status": "error", "msg": "Unsupported URL"}
+        return self._queue(url, entry, body)
+
+    def _queue(self, url, entry, body):
         vid = dict(parse_qsl(urlsplit(url).query)).get("v", url)
         with self.lock:
             if any(i["id"] == vid for i in self.queue):
@@ -311,6 +332,68 @@ class DemoMeTube(DemoServer):
                     item.update(status="downloading", percent=item["looks"] * 40.0)
             return {"queue": [dict(i) for i in self.queue], "pending": [],
                     "done": [dict(i) for i in self.done]}
+
+
+class DemoYouTubeMusic(DemoServer):
+    """A stand-in for YouTube Music's search API (nauta.ytmusic): POST
+    /youtubei/v1/search answers the albums or playlists of
+    tests/data/demo/metube.json, in the shape nauta.ytmusic reads."""
+
+    def __init__(self, directory):
+        self.data = json.loads((Path(directory) / "metube.json").read_text())
+        self.requests = []
+        self.headers = []      # of every request, to check what was sent
+        self.proxy_cookie = self.proxy_basic = None
+        server = self
+
+        class Handler(_MeTubeHandler):
+            owner = server
+
+            def _handle(self, raw):
+                server.headers.append(dict(self.headers))
+                super()._handle(raw)
+
+        self.httpd, self.scheme = _server(Handler, None)
+
+    def answer(self, method, path, body):
+        if (method, path) != ("POST", "youtubei/v1/search"):
+            return None
+        from nauta.ytmusic import ALBUMS, PLAYLISTS, SECTIONS
+        # The demo's playlists are community playlists; no featured ones.
+        kind = {SECTIONS[ALBUMS][0]: ALBUMS,
+                SECTIONS[PLAYLISTS][1]: PLAYLISTS}.get(body.get("params"))
+        words = (body.get("query") or "").lower().split()
+        items = []
+        for c in self.data.get("collections", []):
+            haystack = f"{c['title']} {c['subtitle']} {c.get('_words', '')}".lower()
+            if c["kind"] != kind or not any(w in haystack for w in words):
+                continue
+            parts = urlsplit(c["url"])
+            browse_id = parts.path.rsplit("/", 1)[-1] if "/browse/" in parts.path \
+                else "VL" + dict(parse_qsl(parts.query))["list"]
+            items.append({"musicResponsiveListItemRenderer": {
+                "flexColumns": [
+                    {"musicResponsiveListItemFlexColumnRenderer": {
+                        "text": {"runs": [{"text": c["title"]}]}}},
+                    {"musicResponsiveListItemFlexColumnRenderer": {
+                        "text": {"runs": [{"text": t} for t in
+                                          _split_runs(c["subtitle"])]}}}],
+                "navigationEndpoint": {"browseEndpoint": {"browseId": browse_id}}}})
+        sections = [{"musicShelfRenderer": {"contents": items}}] if items else \
+            [{"itemSectionRenderer": {"contents": []}}]
+        return {"contents": {"tabbedSearchResultsRenderer": {"tabs": [
+            {"tabRenderer": {"content": {"sectionListRenderer": {
+                "contents": sections}}}}]}}}
+
+
+def _split_runs(line):
+    """"Album • Artist • 2024" as YouTube Music's text runs."""
+    runs = []
+    for i, part in enumerate(line.split(" • ")):
+        if i:
+            runs.append(" • ")
+        runs.append(part)
+    return runs
 
 
 def _png(width, height, raw):

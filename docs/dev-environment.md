@@ -16,6 +16,8 @@ Unreachable from the cloud environment on 2026-11-04 (proxy `403`):
 | `opensubsonic.netlify.app` | OpenSubsonic API specification |
 | `demo.navidrome.org` | Navidrome's public demo server, to check the client against a real server |
 | `www.subsonic.org` | Original Subsonic API reference |
+| `music.youtube.com` | YouTube Music's search API, to check album and playlist search against the live service ([finding new music](downloads.md)) |
+| `www.youtube.com` | YouTube, to check what yt-dlp and MeTube get from it |
 
 Workaround used: Navidrome's source is cloned with git
 (`github.com/navidrome/navidrome`), which works. `dl.flathub.org`
