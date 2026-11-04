@@ -149,13 +149,24 @@ def test_album_like_and_collection_menu(window, demo):
     assert all(s["albumId"] != ALBUM for s in window.player.queue)
 
 
+def wait_for_list(dialog):
+    """Until the "Add to Playlist" dialog shows its list (or an error,
+    reported with its text)."""
+    stack = dialog.get_child().get_content()
+    run_until(lambda: stack.get_visible_child_name() != "loading", 30)
+    page = stack.get_visible_child()
+    assert stack.get_visible_child_name() == "list", \
+        getattr(page, "get_description", lambda: "")()
+    return stack
+
+
 def test_playlists_new_add_rename_reorder_remove_delete(window, demo):
     from nauta import playlist_edit
     from nauta.pages import PlaylistPage
     songs = demo.library["songs"]
     # A new playlist with a song, from the song menu's dialog.
     dialog = playlist_edit.choose_playlist(window, [songs[0]])
-    run_until(lambda: dialog.get_child().get_content().get_visible_child_name() == "list")
+    wait_for_list(dialog)
     dialog.close()
     made = []
     alert = playlist_edit.new_playlist(window, [songs[0]], made.append)
@@ -166,8 +177,7 @@ def test_playlists_new_add_rename_reorder_remove_delete(window, demo):
     assert window.toasts_seen[-1] == "Added to “Road Trip”"
     # Add two more through the dialog's list.
     dialog = playlist_edit.choose_playlist(window, songs[1:3])
-    stack = dialog.get_child().get_content()
-    run_until(lambda: stack.get_visible_child_name() == "list")
+    stack = wait_for_list(dialog)
     listbox = stack.get_visible_child().get_child().get_child().get_child()
     rows = []
     row = listbox.get_first_child()
