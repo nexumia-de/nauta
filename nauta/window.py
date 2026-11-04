@@ -159,14 +159,22 @@ class Window(Adw.ApplicationWindow):
         if connection.signed_in:
             proxy_login.sign_in(self.nav, connection, connection.api.http,
                                 connection.proxy_cookies,
-                                connection_module.probe_through, url)
+                                connection_module.probe_through, url,
+                                on_basic=lambda: self.toast(
+                                    "The proxy didn't accept its user name and "
+                                    "password. Check Proxy Login in Preferences → "
+                                    "Connection."))
 
     def _on_downloads_proxy_login(self, downloads, url):
         """The proxy in front of MeTube wants its login (again)."""
         if downloads.configured and self.main is not None:
             proxy_login.sign_in(self.nav, downloads, downloads.api.http,
                                 downloads.proxy_cookies,
-                                downloads_module.probe_through, url)
+                                downloads_module.probe_through, url,
+                                on_basic=lambda: self.toast(
+                                    "MeTube's proxy didn't accept its user name "
+                                    "and password. Check Proxy Login in "
+                                    "Preferences → Downloads."))
 
     def _on_signed_out(self, *_):
         self.player.clear()

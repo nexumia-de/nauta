@@ -62,6 +62,30 @@ The proxy's cookies are kept in the keyring (kind `proxy-cookies`) and
 loaded by `Connection`; they go only to the server's address, also for
 playback through the media proxy.
 
+## Proxy user name and password instead (HTTP Basic)
+
+A proxy session ends (Pangolin: after 30 days by default), and with it
+comes the login page again. Pangolin's **header authentication** (HTTP
+Basic per resource) avoids that: the form's "Proxy Login" row takes a
+user name and password once, the keyring keeps them (kind
+`proxy-credentials`), and every request to the remote address carries
+them, streams too
+([toolkit](../../phosh-toolkit/docs/shared-connection.md#http-basic-auth-at-the-proxy-proxycredentials),
+[decision and security trade-off](../../phosh-toolkit/docs/decisions/proxy-basic-auth.md)).
+
+- Works for Navidrome because the Subsonic credentials are in the body:
+  Pangolin passes the `Authorization` header on, and Navidrome's
+  Subsonic API does not read it (`server/subsonic`, commit `7c1e68a`).
+- With "extended compatibility" on, Pangolin answers a missing or wrong
+  header with a Basic challenge: setup expands "Proxy Login" and marks
+  it; later the window says to check it in Preferences → Connection.
+  Without it, the login page appears as before.
+- Owner's side in Pangolin, per resource (Navidrome, MeTube): set header
+  authentication with a user name and password made for the phone only
+  (random, from the password manager) and turn on extended
+  compatibility. On a lost phone: change them and block its client
+  certificate.
+
 # Sign-in and the password
 
 - Setup checks the addresses and the certificate (toolkit form), then

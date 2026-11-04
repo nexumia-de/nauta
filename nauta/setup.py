@@ -16,7 +16,7 @@ def connection_form(window, account, toast=None):
         home_description="On these Wi-Fi networks Nauta talks to the server "
                          "directly. The local address is used only on the "
                          "networks listed here.",
-        toast=toast)
+        toast=toast, proxy_basic=True)
 
 
 def _button(label):
@@ -65,6 +65,7 @@ class SetupPage(Adw.NavigationPage):
                 return
             self.window.connection.api.http.certificate = http.certificate
             self.window.connection.api.http.cookies = http.cookies
+            self.window.connection.api.http.proxy_auth = http.proxy_auth
             self.window.nav.push(SignInPage(self.window, self.form,
                                             self.form.answer(answers),
                                             self.form.reachable_url(answers)))
@@ -118,6 +119,7 @@ class SignInPage(Adw.NavigationPage):
             self.form.apply(conn.account)
             conn.save()
             conn.load_certificate()
+            conn.load_proxy_login()
             conn.resolve()
             self.window.show_library()
 

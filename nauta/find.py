@@ -17,7 +17,7 @@ def download_form(window, account, toast=None):
         home_description="On these Wi-Fi networks Nauta talks to MeTube "
                          "directly. The local address is used only on the "
                          "networks listed here.",
-        toast=toast)
+        toast=toast, proxy_basic=True)
 
 
 def format_row(account, changed):
