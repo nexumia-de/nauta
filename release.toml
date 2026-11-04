@@ -27,6 +27,16 @@ caption = "Now playing, with the queue"
 actions = ["app.play-album('al-195308cfb6d233b94d9b')"]
 
 [[screenshots.shot]]
+name = "artist"
+caption = "An artist with popular songs, artist radio and similar artists"
+actions = ["app.show-artist('ar-0cc9bd8a19dfe4c22d8f')"]
+
+[[screenshots.shot]]
+name = "lyrics"
+caption = "Lyrics that follow the song"
+actions = ["app.play-album('al-195308cfb6d233b94d9b')", "app.show-lyrics"]
+
+[[screenshots.shot]]
 name = "find-music"
 caption = "Finding new music with your own MeTube server"
 actions = ["app.find-music-for('harbour lights')"]

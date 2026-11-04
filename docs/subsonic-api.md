@@ -86,6 +86,22 @@ found. Nauta treats 40, 41 and 44 as "signed out".
 | `getCoverArt` | `id`, `size` | image bytes |
 | `stream` | `id`, `maxBitRate` (kbit/s) | audio bytes |
 | `scrobble` | `id`, `submission` | – |
+| `star`, `unstar` | `id`, `albumId`, `artistId` (each repeatable) | – |
+| `getStarred2` | – | `starred2` with `artist`, `album`, `song` |
+| `createPlaylist` | `name` or `playlistId` (replaces the songs), `songId` (repeatable) | `playlist` with `entry[]` |
+| `updatePlaylist` | `playlistId`, `name`, `songIdToAdd`, `songIndexToRemove` (0-based; repeatable) | – |
+| `deletePlaylist` | `id` | – |
+| `getSimilarSongs2` | `id` (song, album or artist), `count` | `similarSongs2.song[]` |
+| `getTopSongs` | `artist` (name), `count` | `topSongs.song[]` |
+| `getArtistInfo2` | `id`, `count` | `artistInfo2` with `similarArtist[]` |
+| `getLyricsBySongId` | `id` | `lyricsList.structuredLyrics[]` with `synced`, `offset`, `line[]` (`start` ms, `value`) |
+
+`getAlbumList2` types: newest, recent, frequent, random,
+alphabeticalByName, alphabeticalByArtist, starred, highest, byGenre,
+byYear. Liked items carry `starred` (a time); playlists carry
+OpenSubsonic `readonly` (smart playlists, others' playlists). Similar
+songs, top songs and similar artists come from an agent (Last.fm and
+others) and are empty without one ([library features](library.md)).
 
 JSON field names (struct tags)[^nd-resp]: songs (`Child`) have `id`,
 `title`, `album`, `artist`, `track`, `discNumber`, `year`,

@@ -34,6 +34,10 @@ class Account:
     quality_home: int = 0
     quality_away: int = 192
     style: str = "system"
+    # Volume normalisation: nauta.loudness OFF, TRACK or ALBUM.
+    replay_gain: str = "track"
+    # Order of the Albums view (nauta.library.SORTS).
+    album_sort: str = "newest"
 
     @property
     def signed_in(self):

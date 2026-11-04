@@ -127,12 +127,14 @@ def album_box(covers, albums, on_activate, subtitle=None):
     return flow
 
 
-def song_row(song, prefix, covers=None, with_album=True):
+def song_row(song, prefix, covers=None, with_album=True, actions=None, index=0):
     """An activatable row: track number (prefix str) or a small cover
-    (covers given), title, artist, duration."""
+    (covers given), title, artist, duration. With `actions`
+    (nauta.actions.SongActions) a "⋮" menu, the same menu on a long
+    press or right click, and the swipe (nauta.swipe)."""
     row = Gtk.ListBoxRow(activatable=True)
     box = Gtk.Box(spacing=12, margin_top=8, margin_bottom=8, margin_start=12,
-                  margin_end=12)
+                  margin_end=6 if actions is not None else 12)
     if covers is not None:
         cover = Cover(size=40)
         cover.show(covers, song.get("coverArt"), 40)
@@ -160,20 +162,47 @@ def song_row(song, prefix, covers=None, with_album=True):
     length.add_css_class("dim-label")
     length.add_css_class("numeric")
     box.append(length)
-    row.set_child(box)
+    row.song = song
     row.title_label = title
+    if actions is None:
+        row.set_child(box)
+    else:
+        _add_actions(row, box, song, index, actions)
     row.update_property([Gtk.AccessibleProperty.LABEL],
                         [f"{song.get('title', '')}, {text.song_subtitle(song, with_album)}"])
     return row
 
 
-def song_list(songs, on_activate, covers=None, numbers=True, with_album=True):
-    """A boxed list of song rows; on_activate(index)."""
+def _add_actions(row, box, song, index, actions):
+    from nauta.swipe import SwipeBox
+    more = Gtk.Button(icon_name="view-more-symbolic", tooltip_text="More",
+                      valign=Gtk.Align.CENTER)
+    more.add_css_class("flat")
+    more.update_property([Gtk.AccessibleProperty.LABEL],
+                         [f"More for {song.get('title', '')}"])
+    more.connect("clicked", lambda b: actions.open(b, song, index))
+    box.append(more)
+    row.more = more
+    press = Gtk.GestureLongPress()
+    press.connect("pressed", lambda g, x, y: (
+        g.set_state(Gtk.EventSequenceState.CLAIMED), actions.open(more, song, index)))
+    row.add_controller(press)
+    click = Gtk.GestureClick(button=3)
+    click.connect("pressed", lambda g, n, x, y: actions.open(more, song, index))
+    row.add_controller(click)
+    icon, label, _ = actions.swipe
+    row.set_child(SwipeBox(box, icon, label, lambda: actions.swiped(song, index)))
+
+
+def song_list(songs, on_activate, covers=None, numbers=True, with_album=True,
+              actions=None):
+    """A boxed list of song rows; on_activate(index). `actions`: see
+    song_row."""
     box = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
     box.add_css_class("boxed-list")
     for i, song in enumerate(songs):
         prefix = str(song.get("track") or i + 1) if numbers else str(i + 1)
-        box.append(song_row(song, prefix, covers, with_album))
+        box.append(song_row(song, prefix, covers, with_album, actions, i))
     box.connect("row-activated", lambda b, row: on_activate(row.get_index()))
     return box
 

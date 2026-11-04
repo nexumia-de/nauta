@@ -1,14 +1,23 @@
 """The main page: Albums, Artists and Playlists in a view stack, with the
 view switcher in the header on wide windows and at the bottom on phones."""
-from gi.repository import Adw, Gio, Gtk
+from gi.repository import Adw, Gio, GLib, Gtk
 from phosh_toolkit import route
 from phosh_toolkit.router import CONNECTING, OFFLINE
 
-from nauta import text, widgets
+from nauta import playlist_edit, text, widgets
 
 # Albums are loaded in pages of this size, up to MAX_ALBUMS.
 PAGE = 100
 MAX_ALBUMS = 2000
+
+# Orders of the Albums view: (getAlbumList2 type, name in the menu).
+SORTS = (("newest", "Recently Added"),
+         ("recent", "Recently Played"),
+         ("frequent", "Most Played"),
+         ("alphabeticalByName", "Name"),
+         ("alphabeticalByArtist", "Artist"),
+         ("starred", "Liked"),
+         ("random", "Random"))
 
 VIEWS = (("albums", "Albums", "media-optical-cd-audio-symbolic"),
          ("artists", "Artists", "system-users-symbolic"),
@@ -46,14 +55,33 @@ class View(Gtk.Stack):
 
 
 class AlbumsView(View):
+    @property
+    def sort(self):
+        sort = self.window.connection.account.album_sort
+        return sort if sort in dict(SORTS) else SORTS[0][0]
+
+    def set_sort(self, sort):
+        """Change and keep the order, and load again."""
+        account = self.window.connection.account
+        if sort == account.album_sort or sort not in dict(SORTS):
+            return
+        account.album_sort = sort
+        self.window.connection.save()
+        self.load()
+
     def fetch(self):
         self.store = Gio.ListStore.new(widgets.Entry)
         self._offset = 0
+        self._generation = getattr(self, "_generation", 0) + 1
         self._next_page()
 
     def _next_page(self):
         conn = self.window.connection
-        conn.call(conn.api.albums, self._on_page, "newest", PAGE, self._offset)
+        generation = self._generation
+        # Random answers different albums on every page: one page only.
+        conn.call(conn.api.albums,
+                  lambda r, e: generation == self._generation and self._on_page(r, e),
+                  self.sort, PAGE, self._offset)
 
     def _on_page(self, albums, error):
         if error is not None:
@@ -64,17 +92,21 @@ class AlbumsView(View):
             self.store.append(widgets.Entry(album))
         if self._offset == 0:
             if not albums:
+                empty = {"starred": ("No Liked Albums", "Like albums with the star "
+                                     "on their page"),
+                         "recent": ("Nothing Played Yet", "")}.get(
+                    self.sort, ("No Albums", "The server's library is empty"))
                 self.show_content(Adw.StatusPage(
                     icon_name="media-optical-cd-audio-symbolic",
-                    title="No Albums",
-                    description="The server's library is empty"))
+                    title=empty[0], description=empty[1]))
                 return
             grid = widgets.AlbumGrid(self.window.covers, self.store,
                                      self.window.show_album)
             self.show_content(Gtk.ScrolledWindow(
                 child=grid, hscrollbar_policy=Gtk.PolicyType.NEVER, vexpand=True))
         self._offset += len(albums)
-        if len(albums) == PAGE and self._offset < MAX_ALBUMS:
+        if len(albums) == PAGE and self._offset < MAX_ALBUMS and \
+                self.sort != "random":
             self._next_page()
 
 
@@ -140,13 +172,30 @@ class PlaylistsView(View):
         if error is not None:
             self.failed("Can't Load Playlists", error)
             return
+        window = self.window
+        top = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
+        top.add_css_class("boxed-list")
+        liked = widgets.nav_row("Liked Songs", "Songs, albums and artists you liked",
+                                icon="starred-symbolic")
+        liked.connect("activated", lambda r: window.show_liked())
+        top.append(liked)
+        new = widgets.nav_row("New Playlist", icon="list-add-symbolic")
+        new.connect("activated", lambda r: playlist_edit.new_playlist(
+            window, done=window.show_playlist))
+        top.append(new)
+        self.top = top
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24)
+        content.append(top)
         if not playlists:
-            self.show_content(Adw.StatusPage(
+            content.append(Adw.StatusPage(
                 icon_name="view-list-bullet-symbolic", title="No Playlists",
-                description="Playlists made on the server appear here"))
+                description="Make one here, or add songs to a new playlist from "
+                            "a song's menu"))
+            self._show(content)
             return
         box = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
         box.add_css_class("boxed-list")
+        content.append(box)
         for playlist in playlists:
             row = widgets.nav_row(
                 playlist.get("name"),
@@ -156,7 +205,10 @@ class PlaylistsView(View):
                 icon="view-list-bullet-symbolic")
             row.connect("activated", lambda r, p=playlist: self.window.show_playlist(p))
             box.append(row)
-        page = Adw.Clamp(child=box, maximum_size=800, margin_top=12,
+        self._show(content)
+
+    def _show(self, content):
+        page = Adw.Clamp(child=content, maximum_size=800, margin_top=12,
                          margin_bottom=24, margin_start=12, margin_end=12)
         self.show_content(Gtk.ScrolledWindow(
             child=page, hscrollbar_policy=Gtk.PolicyType.NEVER, vexpand=True))
@@ -195,6 +247,22 @@ class MainPage(Adw.NavigationPage):
         header.pack_end(Gtk.MenuButton(icon_name="open-menu-symbolic",
                                        menu_model=menu, tooltip_text="Main Menu",
                                        primary=True))
+        # The Albums view's order, shown with that view only.
+        self.sort_action = Gio.SimpleAction.new_stateful(
+            "album-sort", GLib.VariantType("s"),
+            GLib.Variant("s", self.views["albums"].sort))
+        self.sort_action.connect("change-state", self._on_sort)
+        group = Gio.SimpleActionGroup()
+        group.add_action(self.sort_action)
+        self.insert_action_group("library", group)
+        sorts = Gio.Menu()
+        for value, name in SORTS:
+            sorts.append(name, f"library.album-sort::{value}")
+        self.sort_button = Gtk.MenuButton(icon_name="view-sort-descending-symbolic",
+                                          menu_model=sorts, tooltip_text="Sort Albums")
+        self.sort_button.update_property([Gtk.AccessibleProperty.LABEL],
+                                         ["Sort Albums"])
+        header.pack_end(self.sort_button)
         self.banner = Adw.Banner(button_label="Retry")
         self.banner.connect("button-clicked", lambda *_: window.connection.resolve())
         self.bar = Adw.ViewSwitcherBar(stack=self.stack, reveal=True)
@@ -221,6 +289,17 @@ class MainPage(Adw.NavigationPage):
     def _on_view(self, *_):
         view = self.stack.get_visible_child()
         if view is not None and not view.loaded:
+            view.load()
+        self.sort_button.set_visible(view is self.views["albums"])
+
+    def _on_sort(self, action, value):
+        action.set_state(value)
+        self.views["albums"].set_sort(value.unpack())
+
+    def playlists_changed(self):
+        """Load the playlists again (one was made, changed or deleted)."""
+        view = self.views["playlists"]
+        if view.loaded:
             view.load()
 
     def _on_state(self, conn, *_):

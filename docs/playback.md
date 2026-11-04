@@ -1,7 +1,7 @@
 ---
 type: Concept
 title: Playback
-description: The play queue, streaming through the local media proxy as POST, streaming quality per route, scrobbling, and the player bar and Now Playing page.
+description: The play queue and its editing, repeat and shuffle, the queue kept across restarts, streaming through the local media proxy as POST, quality per route, volume normalisation, scrobbling, sleep timer, lyrics, and the player bar and Now Playing page.
 tags: [playback, gstreamer, queue, proxy, scrobble]
 resource: ../nauta/player.py
 generated: { by: claude-code/2.1.317, at: 2026-11-04T14:00:00Z }
@@ -14,6 +14,50 @@ Playing an album, a playlist or a search result replaces the queue and
 starts at the tapped song; "Shuffle" shuffles it. At the end of a song
 the next one starts; "Previous" restarts the song after 3 s, else goes
 back. After the last song playback stops and the queue stays.
+
+- **Editing** while it plays: `play_next` inserts after the current
+  song, `add` appends (both start playing when nothing is loaded),
+  `remove` (removing the current song plays the next), `move`,
+  `clear_upcoming`. The signal "queue-changed" tells the views.
+- **Shuffle** as a toggle shuffles only what comes next, like Spotify;
+  turning it off puts the queue back in its order, with songs added in
+  between kept.
+- **Repeat**: off → all (after the last song the first) → one (the song
+  again at its end; Next still goes on).
+
+# Kept across restarts (`resume.py`)
+
+The queue, the current song, its position and repeat are saved in
+`queue.json` in the data directory (half a second after a change, every
+10 s of playing, at quit), as the songs' metadata: no URLs, no
+credentials. At the next start they are set again, paused; Play
+continues at the saved position (a seek once the stream is prepared;
+streams the server converts can't seek, they start from the
+beginning). Signing out clears the queue and so the file.
+
+# Volume normalisation (`loudness.py`)
+
+GStreamer's `rgvolume` as playbin's audio filter reads the ReplayGain
+tags in the stream: Off, per song (default) or per album, in
+Preferences → Playback; songs without tags play 6 dB lower, and the
+headroom is 0 dB, so tagged loud songs are not clipped. It takes effect
+with the next song. Whether Navidrome keeps the tags in converted
+streams is not checked yet.
+
+# Sleep timer (`sleep.py`)
+
+From Now Playing's "⋮" → Sleep Timer: pause after 15, 30, 45 or 60
+minutes or at the end of the song (the next one starts and is paused
+at once); "Pauses in … min" shows under the controls.
+
+# Lyrics (`lyrics.py`)
+
+The Lyrics button on Now Playing opens a page with
+`getLyricsBySongId` (OpenSubsonic `songLyrics`): synced lyrics before
+unsynced ones; the current line is marked in the accent colour and
+scrolled to a third of the height; tapping a line seeks there. The
+lyric's `offset` (ms, positive = earlier) is applied. The page follows
+the player to the next song; "No Lyrics" when the server has none.
 
 # Streaming
 
@@ -35,14 +79,18 @@ back. After the last song playback stops and the queue stays.
 on the server), `submission=true` once half of it or four minutes have
 played, or at its end.
 
-# UI (`nowplaying.py`)
+# UI (`nowplaying.py`, `player_bar.py`)
 
 - **Player bar** under every page except Now Playing: cover, title,
   artist, play/pause, next, and a thin progress line. Tapping it opens
   Now Playing.
-- **Now Playing**: cover, title, artist and album, position slider with
-  elapsed and remaining time, previous / play / next, and the queue
-  (tap a song to jump). It is a normal page: swipe back closes it.
+- **Now Playing**: cover, title, artist and album with the like star,
+  position slider with elapsed and remaining time, shuffle / previous /
+  play / next / repeat, and **Next Up** (`queue_view.py`): the songs
+  after the current one with their menu (remove, move up or down) and
+  the swipe that removes, and "Clear". The header has Lyrics and the
+  song's "⋮" menu with the sleep timer. It is a normal page: swipe back
+  closes it.
 - Playback errors show as a toast ("Can't play this song: …").
 
 # With the window closed (`window.py`)
@@ -79,7 +127,8 @@ length and cover, with play/pause, previous, next and seeking.
 
 # Not yet
 
-Gapless playback and a queue kept across restarts (M2).
+Gapless playback (#8) and crossfade (#35) need changes to
+phosh-toolkit's `media.Media` (one pipeline per song today).
 
 # Verified (2026-11-04, cloud container, GStreamer 1.24)
 
@@ -91,3 +140,8 @@ dbus-daemon, driven like a lock screen (properties, change signals,
 PlayPause, Play, Seek, Next, Raise, Quit, cover as a local file).
 `tests/test_ui.py`: closing the window while playing hides it, holds
 the app and inhibits suspend; pausing keeps it; stopping quits.
+`tests/test_player.py` also: play next and add, remove and move with
+the current song kept, shuffle on and off, repeat all and one, the
+queue saved and resumed at its position, `rgvolume` in the pipeline
+with sound going through, the sleep timer. `tests/test_library_ui.py`:
+Next Up, repeat, shuffle, sleep timer and lyrics following the song.

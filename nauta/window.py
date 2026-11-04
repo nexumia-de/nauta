@@ -7,12 +7,19 @@ from phosh_toolkit.proxy import MediaProxy
 from nauta import NAME
 from nauta import connection as connection_module
 from nauta import downloads as downloads_module
+from nauta.artist import ArtistPage
+from nauta.favourites import Favourites
 from nauta.images import Covers
 from nauta.library import MainPage
-from nauta.nowplaying import NowPlayingPage, PlayerBar
-from nauta.pages import AlbumPage, ArtistPage, PlaylistPage, SearchPage
+from nauta.liked import LikedPage
+from nauta.lyrics import LyricsPage
+from nauta.nowplaying import NowPlayingPage
+from nauta.pages import AlbumPage, PlaylistPage, SearchPage
 from nauta.player import Player
+from nauta.player_bar import PlayerBar
+from nauta.resume import QueueMemory
 from nauta.setup import SetupPage
+from nauta.sleep import SleepTimer
 
 log = logging.getLogger("nauta.window")
 
@@ -37,6 +44,11 @@ class Window(Adw.ApplicationWindow):
         self.player = Player(connection, self.proxy)
         self.player.connect("error", lambda p, message: self.toast(
             f"Can't play this song: {message}"))
+        # Likes, the sleep timer and the queue kept across restarts
+        # (docs/library.md, docs/playback.md).
+        self.favourites = Favourites(connection)
+        self.sleep_timer = SleepTimer(self.player)
+        self.queue_memory = None
         # Music goes on with the window closed and the screen off
         # (docs/playback.md): the app is held while something is loaded,
         # suspend is inhibited while it plays.
@@ -78,11 +90,19 @@ class Window(Adw.ApplicationWindow):
             f"Can't download “{title}”: {message}"))
         self.connect("close-request", self._on_close)
         if connection.signed_in:
+            self._start_memory()
             self.show_library()
             connection.resolve()
             self.downloads.resolve()
         else:
             self.show_setup()
+
+    def _start_memory(self):
+        """Set the queue of the last run (paused) and keep it from now on."""
+        if self.queue_memory is None:
+            self.queue_memory = QueueMemory(self.player)
+            if self.player.song is None:
+                self.queue_memory.restore()
 
     # --- pages ---------------------------------------------------------
 
@@ -91,9 +111,11 @@ class Window(Adw.ApplicationWindow):
         self.nav.replace([SetupPage(self)])
 
     def show_library(self):
+        self._start_memory()
         self.main = MainPage(self)
         self.main.set_wide(self._wide)
         self.nav.replace([self.main])
+        self.favourites.load()
 
     def show_view(self, index):
         if self.main is not None:
@@ -108,6 +130,17 @@ class Window(Adw.ApplicationWindow):
 
     def show_playlist(self, playlist):
         self.nav.push(PlaylistPage(self, playlist))
+
+    def show_liked(self):
+        self.nav.push(LikedPage(self))
+
+    def show_lyrics(self):
+        if self.player.song is not None:
+            self.nav.push(LyricsPage(self))
+
+    def playlists_changed(self):
+        if self.main is not None:
+            self.main.playlists_changed()
 
     def show_search(self):
         if self.main is None:
@@ -181,6 +214,7 @@ class Window(Adw.ApplicationWindow):
 
     def _on_signed_out(self, *_):
         self.player.clear()
+        self.sleep_timer.cancel()
         self.toast("The server didn't accept the password. Sign in again.")
         self.show_setup()
 
@@ -232,6 +266,11 @@ class Window(Adw.ApplicationWindow):
     def _shut_down(self):
         if self._inhibiting:
             self._release_inhibit()
+        if self.queue_memory is not None:
+            # Saved before the player is cleared, for the next start.
+            self.queue_memory.close()
+            self.queue_memory = None
+        self.sleep_timer.close()
         if self.mpris is not None:
             self.mpris.close()
             self.mpris = None

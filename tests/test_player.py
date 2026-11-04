@@ -96,3 +96,128 @@ def test_error_is_reported(player, demo):
     player.play([{"id": "missing", "title": "Gone", "duration": 10}])
     run_until(lambda: errors, 15)
     assert player.media is None
+
+
+# --- editing the queue, repeat, shuffle (docs/playback.md) -------------
+
+def ids(songs):
+    return [s["id"] for s in songs]
+
+
+def test_play_next_and_add_to_the_end(player, demo):
+    songs = album(demo)
+    other = demo.library["songs"][-2:]
+    player.play(songs[:3], 0)
+    changes = []
+    player.connect("queue-changed", lambda p: changes.append(1))
+    player.play_next([other[0]])
+    player.add([other[1]])
+    assert ids(player.queue) == ids([songs[0], other[0], songs[1], songs[2], other[1]])
+    assert player.index == 0 and len(changes) == 2
+    # With nothing loaded, both start playing.
+    player.clear()
+    player.add(songs[:2])
+    assert player.song is songs[0]
+
+
+def test_remove_and_move_keep_the_current_song(player, demo):
+    songs = album(demo)[:5]
+    player.play(songs, 2)
+    player.remove(0)
+    assert player.song is songs[2] and player.index == 1
+    player.move(3, 0)
+    assert ids(player.queue) == ids([songs[4], songs[1], songs[2], songs[3]])
+    assert player.song is songs[2] and player.index == 2
+    player.remove(2)               # the current one: the next one plays
+    assert player.song is songs[3]
+    run_until(lambda: player.position > 0.1, 15)
+    player.clear_upcoming()
+    assert player.queue[-1] is songs[3] and player.upcoming == []
+
+
+def test_shuffle_toggle_restores_the_order(player, demo):
+    songs = album(demo)
+    player.play(songs, 2)
+    player.set_shuffle(True)
+    assert player.shuffled and player.song is songs[2]
+    # Only what comes next is shuffled.
+    assert ids(player.queue[:3]) == ids(songs[:3])
+    assert sorted(ids(player.upcoming)) == sorted(ids(songs[3:]))
+    extra = demo.library["songs"][-1]
+    player.add([extra])
+    player.set_shuffle(False)
+    assert ids(player.queue) == ids(songs + [extra])
+    assert player.index == 2
+
+
+def test_repeat(player, demo):
+    songs = album(demo)[:2]
+    player.play(songs, 1)
+    player.cycle_repeat()
+    assert player.repeat == "all"
+    player.next()                         # past the end: back to the first
+    assert player.index == 0
+    player.cycle_repeat()
+    assert player.repeat == "one"
+    run_until(lambda: player.position > 0.2, 15)
+    player.seek(19.6)
+    run_until(lambda: player.position < 5 and player.playing, 15)
+    assert player.index == 0              # the same song again
+
+
+def test_queue_kept_across_restarts(player, demo, tmp_path):
+    from nauta.resume import QueueMemory
+    songs = album(demo)
+    memory = QueueMemory(player, tmp_path / "queue.json")
+    player.play(songs, 1)
+    run_until(lambda: player.position > 0.2, 15)
+    player.seek(7)
+    run_until(lambda: player.position >= 7, 15)
+    player.set_repeat("all")
+    memory.close()
+    player.clear()
+
+    again = QueueMemory(player, tmp_path / "queue.json")
+    again.restore()
+    assert ids(player.queue) == ids(songs) and player.index == 1
+    assert player.media is None and player.repeat == "all"
+    player.toggle()
+    run_until(lambda: player.playing and player.position >= 6.5, 15)
+    again.close()
+
+
+def test_volume_normalisation(player, demo):
+    from nauta import loudness
+    player.make_media = player._make_media
+    player.connection.account.replay_gain = loudness.ALBUM
+    player.play(album(demo)[:1])
+    run_until(lambda: player.media is not None, 15)
+    element = player.media.pipeline.props.audio_filter
+    assert element.get_factory().get_name() == "rgvolume" and element.props.album_mode
+    run_until(lambda: player.position > 0.3, 15)     # sound goes through it
+    player.clear()
+    player.connection.account.replay_gain = loudness.OFF
+    player.play(album(demo)[:1])
+    run_until(lambda: player.media is not None, 15)
+    assert player.media.pipeline.props.audio_filter is None
+
+
+def test_sleep_timer(player, demo):
+    from nauta.sleep import END_OF_SONG, SleepTimer
+    now = [100.0]
+    timer = SleepTimer(player, clock=lambda: now[0])
+    songs = album(demo)
+    player.play(songs, 0)
+    timer.start(15)
+    now[0] += 60
+    assert timer.active and timer.remaining() == 14 * 60
+    timer._done()                       # the 15 minutes are over
+    run_until(lambda: not player.playing, 5)
+    assert not timer.active
+    player.toggle()
+    timer.start(END_OF_SONG)
+    assert timer.remaining() is None
+    player.next()
+    run_until(lambda: not player.playing, 5)
+    assert player.index == 1 and not timer.active
+    timer.close()
