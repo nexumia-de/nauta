@@ -14,6 +14,10 @@ finish-args:
   - --share=network
   # The Wi-Fi name, to use the local address at home (docs/connection.md).
   - --system-talk-name=org.freedesktop.NetworkManager
+  # Media controls on the lock screen and in Phosh (MPRIS,
+  # docs/playback.md); the nightly app uses its own name.
+  - --own-name=org.mpris.MediaPlayer2.Nauta
+  - --own-name=org.mpris.MediaPlayer2.Nauta.Devel
 cleanup:
   - /include
   - /lib/pkgconfig

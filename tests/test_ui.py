@@ -210,3 +210,33 @@ def test_proxy_login_opens_the_login_page(app, demo, monkeypatch):
     assert calls and calls[0][0] is window.nav and calls[0][5] == demo.url + "/login"
     window.player.clear()
     window.destroy()
+
+
+def test_music_goes_on_with_the_window_closed(app, demo, monkeypatch):
+    from nauta.window import Window
+    monkeypatch.setattr(router.network, "current_ssids", lambda: None)
+    store = settings.Store()
+    account = store.load()
+    account.remote_url, account.user_name = demo.url, "robin"
+    store.save(account)
+    keyring.store(keyring.PASSWORD, PASSWORD)
+    conn = connection.Connection(store, watch=False)
+    window = Window(app, conn)
+    window.present()
+    quits = []
+    monkeypatch.setattr(window, "quit_app", lambda: quits.append(1))
+    album = demo.library["albums"][0]["id"]
+    window.player.play([s for s in demo.library["songs"] if s["albumId"] == album])
+    run_until(lambda: window.player.playing and window._inhibiting, 15)
+    # Closing hides the window and holds the app; the music plays on.
+    assert window.emit("close-request") is True
+    assert not window.get_visible() and window._held and window.player.playing
+    window.player.toggle()
+    run_until(lambda: not window._inhibiting, 5)
+    assert not quits                       # paused: still there
+    window.player.stop()
+    assert quits == [1]                    # nothing left: quit
+    window._held = False
+    app.release()
+    window.player.clear()
+    window.destroy()

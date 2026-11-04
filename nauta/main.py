@@ -46,7 +46,7 @@ class Application(Adw.Application):
                                ("search", self._on_search),
                                ("play-pause", self._on_play_pause),
                                ("now-playing", self._on_now_playing),
-                               ("quit", lambda *_: self.quit())):
+                               ("quit", self._on_quit)):
             action = Gio.SimpleAction.new(name, None)
             action.connect("activate", callback)
             self.add_action(action)
@@ -86,7 +86,8 @@ class Application(Adw.Application):
 
     def do_activate(self):
         from nauta.window import Window
-        window = self.props.active_window
+        # A window hidden while music plays is not "active" any more.
+        window = self.props.active_window or next(iter(self.get_windows()), None)
         if window is None:
             window = Window(self, self.connection)
             if os.environ.get("NAUTA_DEMO"):
@@ -117,6 +118,13 @@ class Application(Adw.Application):
                 window.player.play(album["song"])
                 window.show_now_playing()
         self.connection.call(self.connection.api.album, done, album_id.unpack())
+
+    def _on_quit(self, *_):
+        window = next(iter(self.get_windows()), None)
+        if window is not None and hasattr(window, "quit_app"):
+            window.quit_app()
+        else:
+            self.quit()
 
     def _on_play_pause(self, *_):
         if self._window():

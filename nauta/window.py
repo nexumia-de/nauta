@@ -1,3 +1,5 @@
+import logging
+
 from gi.repository import Adw, GLib, Gtk
 from phosh_toolkit import proxy_login
 from phosh_toolkit.proxy import MediaProxy
@@ -10,6 +12,8 @@ from nauta.nowplaying import NowPlayingPage, PlayerBar
 from nauta.pages import AlbumPage, ArtistPage, PlaylistPage, SearchPage
 from nauta.player import Player
 from nauta.setup import SetupPage
+
+log = logging.getLogger("nauta.window")
 
 
 class Window(Adw.ApplicationWindow):
@@ -26,6 +30,21 @@ class Window(Adw.ApplicationWindow):
         self.player = Player(connection, self.proxy)
         self.player.connect("error", lambda p, message: self.toast(
             f"Can't play this song: {message}"))
+        # Music goes on with the window closed and the screen off
+        # (docs/playback.md): the app is held while something is loaded,
+        # suspend is inhibited while it plays.
+        self._held = False
+        self._inhibiting = False
+        self._inhibit = 0       # 0 when no session manager answers
+        self.player.connect("state-changed", self._on_player_state)
+        self.mpris = None
+        try:
+            from nauta.mpris import Mpris
+            self.mpris = Mpris(self.player, self.covers, self.present,
+                               self.quit_app)
+        except GLib.Error as e:
+            log.info("no media controls: %s", e.message)
+        self.connect("destroy", self._on_destroy)
         self.main = None
         self.nav = Adw.NavigationView()
         self.nav.connect("notify::visible-page", self._on_page)
@@ -122,6 +141,55 @@ class Window(Adw.ApplicationWindow):
         self.show_setup()
 
     def _on_close(self, *_):
+        if self.player.media is not None:
+            # Playing or paused: hide and keep the app; the media controls
+            # and opening Nauta again bring the window back.
+            self.set_visible(False)
+            if not self._held:
+                self.get_application().hold()
+                self._held = True
+            return True
+        self._shut_down()
+        return False
+
+    def _on_player_state(self, player):
+        app = self.get_application()
+        if player.playing and not self._inhibiting and app is not None:
+            self._inhibiting = True
+            self._inhibit = app.inhibit(self, Gtk.ApplicationInhibitFlags.SUSPEND,
+                                        "Playing music")
+        elif not player.playing and self._inhibiting:
+            self._release_inhibit()
+        if player.media is None and self._held and not self.get_visible():
+            # Hidden and nothing left to play: quit.
+            self.quit_app()
+
+    def _on_destroy(self, *_):
+        if self.mpris is not None:
+            self.mpris.close()
+            self.mpris = None
+
+    def quit_app(self):
+        """Stop playing and quit (menu, media controls)."""
+        self._shut_down()
+        app = self.get_application()
+        if self._held:
+            self._held = False
+            app.release()
+        self.destroy()
+        app.quit()
+
+    def _release_inhibit(self):
+        self._inhibiting = False
+        if self._inhibit:
+            self.get_application().uninhibit(self._inhibit)
+            self._inhibit = 0
+
+    def _shut_down(self):
+        if self._inhibiting:
+            self._release_inhibit()
+        if self.mpris is not None:
+            self.mpris.close()
+            self.mpris = None
         self.player.clear()
         self.proxy.stop()
-        return False
