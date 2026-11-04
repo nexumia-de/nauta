@@ -219,6 +219,10 @@ class DemoMeTube(DemoServer):
     def __init__(self, directory, tls=None):
         self.data = json.loads((Path(directory) / "metube.json").read_text())
         self.collections = {c["url"]: c for c in self.data.get("collections", [])}
+        # Album page links (…/browse/MPREb_…) of the albums.
+        self.album_pages = {f"https://music.youtube.com/browse/{c['browse_id']}": c
+                            for c in self.data.get("collections", [])
+                            if c.get("browse_id")}
         self.requests = []
         self.queue, self.done = [], []
         self.clock = 0
@@ -262,6 +266,11 @@ class DemoMeTube(DemoServer):
                      for e in source if e["url"] == url), None)
 
     def _browse(self, url, limit):
+        if "/browse/MPREb_" in url:
+            # Like MeTube: yt-dlp answers an album page with a link to the
+            # album's playlist, which /browse (extract_flat) doesn't follow.
+            return {"status": "error", "msg": "This URL points to a single video, "
+                    "not a channel or playlist. Use Download instead."}
         collection = self.collections.get(url)
         if collection is not None:
             entries = [{k: v for k, v in self._entry(u).items()
@@ -291,7 +300,8 @@ class DemoMeTube(DemoServer):
         if body.get("download_type") != "audio" or not body.get("quality"):
             return {"status": "error", "msg": "Bad request"}
         url = body.get("url") or ""
-        collection = self.collections.get(url)
+        # /add follows the album page's link to its playlist.
+        collection = self.collections.get(url) or self.album_pages.get(url)
         if collection is not None:
             # Like MeTube: every song of the album or playlist is queued.
             for track in collection["tracks"]:
@@ -356,6 +366,8 @@ class DemoYouTubeMusic(DemoServer):
         self.httpd, self.scheme = _server(Handler, None)
 
     def answer(self, method, path, body):
+        if (method, path) == ("POST", "youtubei/v1/browse"):
+            return self._album_page(body.get("browseId") or "")
         if (method, path) != ("POST", "youtubei/v1/search"):
             return None
         from nauta.ytmusic import ALBUMS, PLAYLISTS, SECTIONS
@@ -368,22 +380,37 @@ class DemoYouTubeMusic(DemoServer):
             haystack = f"{c['title']} {c['subtitle']} {c.get('_words', '')}".lower()
             if c["kind"] != kind or not any(w in haystack for w in words):
                 continue
-            parts = urlsplit(c["url"])
-            browse_id = parts.path.rsplit("/", 1)[-1] if "/browse/" in parts.path \
-                else "VL" + dict(parse_qsl(parts.query))["list"]
-            items.append({"musicResponsiveListItemRenderer": {
+            playlist_id = dict(parse_qsl(urlsplit(c["url"]).query))["list"]
+            browse_id = c.get("browse_id") or "VL" + playlist_id
+            item = {
                 "flexColumns": [
                     {"musicResponsiveListItemFlexColumnRenderer": {
                         "text": {"runs": [{"text": c["title"]}]}}},
                     {"musicResponsiveListItemFlexColumnRenderer": {
                         "text": {"runs": [{"text": t} for t in
                                           _split_runs(c["subtitle"])]}}}],
-                "navigationEndpoint": {"browseEndpoint": {"browseId": browse_id}}}})
+                "navigationEndpoint": {"browseEndpoint": {"browseId": browse_id}}}
+            if c.get("browse_id") and not c.get("_no_play_button"):
+                # An album's play button plays its playlist.
+                item["overlay"] = {"musicItemThumbnailOverlayRenderer": {"content": {
+                    "musicPlayButtonRenderer": {"playNavigationEndpoint": {
+                        "watchPlaylistEndpoint": {"playlistId": playlist_id}}}}}}
+            items.append({"musicResponsiveListItemRenderer": item})
         sections = [{"musicShelfRenderer": {"contents": items}}] if items else \
             [{"itemSectionRenderer": {"contents": []}}]
         return {"contents": {"tabbedSearchResultsRenderer": {"tabs": [
             {"tabRenderer": {"content": {"sectionListRenderer": {
                 "contents": sections}}}}]}}}
+
+    def _album_page(self, browse_id):
+        """The part of an album page nauta.ytmusic reads: its canonical
+        URL, the album's playlist."""
+        album = next((c for c in self.data.get("collections", [])
+                      if c.get("browse_id") == browse_id), None)
+        if album is None:
+            return {"error": {"code": 404}}
+        return {"microformat": {"microformatDataRenderer": {
+            "urlCanonical": album["url"]}}}
 
 
 def _split_runs(line):

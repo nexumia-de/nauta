@@ -131,8 +131,18 @@ class Downloads(Router):
             tasks.run(self.youtube_music.search, done, query, kind)
 
     def browse(self, url, done):
-        """The songs of an album or playlist: done((title, entries), error)."""
-        self.call(self.api.browse, done, url)
+        """The songs of an album or playlist: done((url, title, entries),
+        error), where `url` is what MeTube got: for an album page link the
+        album's playlist, found on YouTube Music first (nauta.ytmusic)."""
+        def listed(result, error, playlist):
+            done(None, error) if error is not None else done((playlist, *result), None)
+
+        def resolved(playlist, error):
+            if error is not None:
+                done(None, error)
+                return
+            self.call(self.api.browse, lambda r, e: listed(r, e, playlist), playlist)
+        tasks.run(self.youtube_music.playlist_url, resolved, url)
 
     def add(self, url, title, done, songs=None):
         """Queue `url` in the chosen format; done(answer, error). Its end

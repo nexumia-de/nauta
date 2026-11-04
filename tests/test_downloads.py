@@ -42,7 +42,8 @@ def test_collection_links():
 def test_youtube_music_search(youtube_music):
     api = YouTubeMusic(base_url=youtube_music.url)
     albums = api.search("  harbour   lights ", ALBUMS)
-    assert albums == [{"url": "https://music.youtube.com/browse/MPREb_demoHarbour01",
+    # The album's playlist from its play button, not its album page.
+    assert albums == [{"url": "https://music.youtube.com/playlist?list=OLAK5uy_demoHarbour01",
                        "title": "Saltwater Letters", "kind": ALBUMS,
                        "subtitle": "Album • Harbour Lights • 2024"}]
     method, path, body = youtube_music.requests[-1]
@@ -53,12 +54,30 @@ def test_youtube_music_search(youtube_music):
     # Featured playlists first, then community playlists.
     assert len(youtube_music.requests) == 3
     assert api.search("nothing like this", ALBUMS) == []
+    # Without a play button the album page is the result, and
+    # playlist_url() asks YouTube Music for its playlist.
+    page = "https://music.youtube.com/browse/MPREb_demoOkafor001"
+    assert api.search("okafor", ALBUMS)[0]["url"] == page
+    assert api.playlist_url(page) == \
+        "https://music.youtube.com/playlist?list=OLAK5uy_demoOkafor001"
+    assert youtube_music.requests[-1][1:] == (
+        "youtubei/v1/browse", youtube_music.requests[-1][2])
+    assert youtube_music.requests[-1][2]["browseId"] == "MPREb_demoOkafor001"
+    playlist = "https://music.youtube.com/playlist?list=PLx"
+    assert api.playlist_url(playlist) == playlist
+    with pytest.raises(HttpError):
+        api.playlist_url("https://music.youtube.com/browse/MPREb_unknown")
 
 
 def test_browse_and_add_an_album(metube):
     api = MeTube()
     api.base_url = metube.url
-    url = "https://music.youtube.com/browse/MPREb_demoHarbour01"
+    # Like the real MeTube: /browse doesn't follow an album page to its
+    # playlist (the owner's report: "This URL points to a single video").
+    with pytest.raises(HttpError) as e:
+        api.browse("https://music.youtube.com/browse/MPREb_demoHarbour01")
+    assert "single video" in str(e.value)
+    url = "https://music.youtube.com/playlist?list=OLAK5uy_demoHarbour01"
     title, songs = api.browse(url)
     assert title == "Saltwater Letters"
     assert [s["title"] for s in songs] == ["Northern Tide", "Lanterns on the Pier",
@@ -154,12 +173,12 @@ def test_whole_album_and_playlist_reported_once(metube, monkeypatch):
     dl.connect("finished", lambda d, title: events.append(("finished", title)))
     dl.connect("failed", lambda d, title, msg: events.append(("failed", title, msg)))
     added = []
-    for url in ("https://music.youtube.com/browse/MPREb_demoHarbour01",
+    for url in ("https://music.youtube.com/playlist?list=OLAK5uy_demoHarbour01",
                 "https://music.youtube.com/playlist?list=PLdemoCoastal00001"):
         listed = []
         dl.browse(url, lambda r, e: listed.append(r))
         run_until(lambda: listed)
-        title, songs = listed[0]
+        url, title, songs = listed[0]
         dl.add(url, title, lambda a, e: added.append(e), songs)
     run_until(lambda: len(added) == 2)
     assert added == [None, None]
@@ -170,6 +189,23 @@ def test_whole_album_and_playlist_reported_once(metube, monkeypatch):
     # The playlist's "Unavailable Session" failed, the other five not.
     assert ("failed", "Coastal Evenings", "1 of 6 songs failed (Video unavailable)") in events
     assert not dl._mine
+
+
+def test_album_page_link_listed_through_its_playlist(metube, youtube_music, monkeypatch):
+    """An album page link (pasted, or a result without a play button) is
+    resolved on YouTube Music before MeTube gets it."""
+    dl = _downloads("", metube.url, [], None, monkeypatch)
+    dl.youtube_music.base_url = youtube_music.url
+    done = []
+    dl.browse("https://music.youtube.com/browse/MPREb_demoOkafor001",
+              lambda r, e: done.append((r, e)))
+    run_until(lambda: done)
+    answer, error = done[0]
+    assert error is None
+    url, title, songs = answer
+    assert url == "https://music.youtube.com/playlist?list=OLAK5uy_demoOkafor001"
+    assert title == "Glass Orchard" and len(songs) == 2
+    assert [b["url"] for m, p, b in metube.requests if p == "browse"] == [url]
 
 
 def test_search_kinds(metube, youtube_music, monkeypatch):
