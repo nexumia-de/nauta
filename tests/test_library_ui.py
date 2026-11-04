@@ -149,11 +149,21 @@ def test_album_like_and_collection_menu(window, demo):
     assert all(s["albumId"] != ALBUM for s in window.player.queue)
 
 
-def wait_for_list(dialog):
+def wait_for_list(dialog, demo=None):
     """Until the "Add to Playlist" dialog shows its list (or an error,
     reported with its text)."""
     stack = dialog.get_child().get_content()
-    run_until(lambda: stack.get_visible_child_name() != "loading", 30)
+    try:
+        run_until(lambda: stack.get_visible_child_name() != "loading", 30)
+    except TimeoutError:
+        # Diagnostics for a hang seen only in CI.
+        import faulthandler
+        import sys
+        faulthandler.dump_traceback(sys.stderr, all_threads=True)
+        if demo is not None:
+            print("demo requests:", [r[1] for r in demo.requests[-15:]],
+                  file=sys.stderr)
+        raise
     page = stack.get_visible_child()
     assert stack.get_visible_child_name() == "list", \
         getattr(page, "get_description", lambda: "")()
@@ -166,7 +176,7 @@ def test_playlists_new_add_rename_reorder_remove_delete(window, demo):
     songs = demo.library["songs"]
     # A new playlist with a song, from the song menu's dialog.
     dialog = playlist_edit.choose_playlist(window, [songs[0]])
-    wait_for_list(dialog)
+    wait_for_list(dialog, demo)
     dialog.close()
     made = []
     alert = playlist_edit.new_playlist(window, [songs[0]], made.append)
@@ -177,7 +187,7 @@ def test_playlists_new_add_rename_reorder_remove_delete(window, demo):
     assert window.toasts_seen[-1] == "Added to “Road Trip”"
     # Add two more through the dialog's list.
     dialog = playlist_edit.choose_playlist(window, songs[1:3])
-    stack = wait_for_list(dialog)
+    stack = wait_for_list(dialog, demo)
     listbox = stack.get_visible_child().get_child().get_child().get_child()
     rows = []
     row = listbox.get_first_child()
