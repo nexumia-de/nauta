@@ -16,7 +16,7 @@ import gi  # noqa: E402
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 gi.require_version("Gst", "1.0")
-from gi.repository import Adw, Gst  # noqa: E402
+from gi.repository import Adw, Gst, Gtk  # noqa: E402
 from phosh_toolkit import connection_form, router  # noqa: E402
 from phosh_toolkit.http import Client  # noqa: E402
 from phosh_toolkit.media import Media  # noqa: E402
@@ -394,4 +394,95 @@ def test_playing_song_follows_the_route(app, demo, monkeypatch):
     conn.emit("state-changed")
     assert calls == [1]
     window.player.clear()
+    window.destroy()
+
+
+def _rows(page, name):
+    """The rows of a list page's scrolled list (results or songs)."""
+    child = page.stack.get_child_by_name(name).get_child().get_child()
+    box = child if isinstance(child, Gtk.ListBox) else child.get_last_child()
+    rows, row = [], box.get_first_child()
+    while row is not None:
+        rows.append(row)
+        row = row.get_next_sibling()
+    return rows
+
+
+def test_find_albums_and_playlists(app, demo, metube, youtube_music, monkeypatch):
+    """The Songs, Albums and Playlists filters, an album downloaded as a
+    whole, one song of a playlist, and a pasted link (docs/downloads.md)."""
+    from nauta import downloads, find
+    from nauta.window import Window
+    monkeypatch.setattr(router.network, "current_ssids", lambda: None)
+    monkeypatch.setattr(downloads, "POLL", 1)
+    store = settings.Store()
+    account = store.load()
+    account.remote_url = demo.url
+    account.user_name = "robin"
+    store.save(account)
+    keyring.store(keyring.PASSWORD, PASSWORD)
+    dl_store = settings.DownloadStore()
+    dl_account = dl_store.load()
+    dl_account.remote_url = metube.url
+    dl_store.save(dl_account)
+    dl = downloads.Downloads(dl_store, watch=False)
+    dl.youtube_music.base_url = youtube_music.url
+    window = Window(app, connection.Connection(store, watch=False), dl)
+    window.present()
+    toasts = []
+    monkeypatch.setattr(window, "toast", toasts.append)
+
+    window.show_find_music("harbour")
+    page = visible(window)
+    assert isinstance(page, find.FindMusicPage)
+    assert page.kinds.get_reveal_child()
+    run_until(lambda: page.stack.get_visible_child_name() == "results")
+    assert _rows(page, "results")[0].get_title() == "Northern Tide"
+
+    page.kind_buttons["albums"].set_active(True)
+    assert settings.DownloadStore().load().kind == "albums"
+    run_until(lambda: page.stack.get_visible_child_name() == "results"
+              and _rows(page, "results")[0].get_title() == "Saltwater Letters")
+    album = _rows(page, "results")[0]
+    assert album.get_subtitle() == "Album • Harbour Lights • 2024"
+    album.emit("activated")
+    collection = visible(window)
+    assert isinstance(collection, find.CollectionPage)
+    assert window.nav.get_previous_page(collection) is page
+    run_until(lambda: collection.stack.get_visible_child_name() == "songs")
+    assert [r.get_title() for r in collection.rows] == [
+        "Northern Tide", "Lanterns on the Pier", "Saltwater Letters"]
+    collection.download_all.emit("clicked")
+    run_until(lambda: any("Downloaded “Saltwater Letters”" in t for t in toasts), 20)
+    added = [b for m, p, b in metube.requests if p == "add"]
+    assert [b["url"] for b in added] == [
+        "https://music.youtube.com/browse/MPREb_demoHarbour01"]
+    assert not collection.download_all.get_sensitive()
+    assert all(not r.download.get_sensitive() for r in collection.rows)
+    window.nav.pop()
+
+    page.kind_buttons["playlists"].set_active(True)
+    run_until(lambda: page.stack.get_visible_child_name() == "results"
+              and _rows(page, "results")[0].get_title() == "Coastal Evenings")
+    _rows(page, "results")[0].emit("activated")
+    collection = visible(window)
+    run_until(lambda: collection.stack.get_visible_child_name() == "songs")
+    collection.rows[1].download.emit("clicked")
+    run_until(lambda: any("Downloaded “Pine Smoke”" in t for t in toasts), 20)
+    added = [b for m, p, b in metube.requests if p == "add"]
+    assert added[-1]["url"] == "https://music.youtube.com/watch?v=demo0000005"
+    assert collection.download_all.get_sensitive()
+    window.nav.pop()
+
+    # YouTube searches videos only: no filters there.
+    page.source_buttons["youtube"].set_active(True)
+    assert not page.kinds.get_reveal_child() and page.kind == "songs"
+    page.source_buttons["youtube-music"].set_active(True)
+
+    # A pasted link opens its album or playlist.
+    page.search("https://music.youtube.com/playlist?list=PLdemoCoastal00001&si=x")
+    collection = visible(window)
+    assert isinstance(collection, find.CollectionPage)
+    run_until(lambda: collection.get_title() == "Coastal Evenings")
+    assert len(collection.rows) == 6
     window.destroy()

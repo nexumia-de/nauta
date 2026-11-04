@@ -19,7 +19,7 @@ Change history is in [log.md](log.md).
 * [Connection](connection.md) - Local address only on a listed home Wi-Fi, remote address elsewhere, client certificates, password in the keyring and in request bodies only.
 * [Playback](playback.md) - Play queue, streaming through the local media proxy as POST, quality per route, scrobbling.
 * [Subsonic API](subsonic-api.md) - The calls Nauta uses, read from Navidrome's source at a recorded commit.
-* [Finding new music](downloads.md) - Search YouTube Music or YouTube and download songs into the library through the user's own MeTube, reached with the same route, certificate and proxy login.
+* [Finding new music](downloads.md) - Search YouTube Music (songs, albums, playlists) or YouTube and download songs, whole albums or playlists into the library through the user's own MeTube, reached with the same route, certificate and proxy login.
 
 # Development
 
@@ -29,4 +29,4 @@ Change history is in [log.md](log.md).
 
 # Decision records
 
-* [Decisions](decisions/index.md) - Name, licence, credentials in form bodies, new music through MeTube.
+* [Decisions](decisions/index.md) - Name, licence, credentials in form bodies, new music through MeTube, albums and playlists searched from the phone.

@@ -5,14 +5,15 @@ certificate, the proxy's own login), and the downloads Nauta started
 import logging
 
 from gi.repository import GLib, GObject
-from phosh_toolkit import tls
+from phosh_toolkit import tasks, tls
 from phosh_toolkit.http import NETWORK, HttpError
 from phosh_toolkit.proxy_login import CookieJar, ProxyCredentials
 from phosh_toolkit.router import Router
 
 from nauta import keyring, settings
 from nauta.keyring import CREDENTIALS
-from nauta.metube import ACTIVE, MeTube, matches
+from nauta.metube import ACTIVE, SONGS, YOUTUBE, MeTube, matches
+from nauta.ytmusic import YouTubeMusic
 
 log = logging.getLogger("nauta.downloads")
 
@@ -25,8 +26,8 @@ class Downloads(Router):
     __gsignals__ = {
         # MeTube's list ({"queue", "pending", "done"}) after each look.
         "history": (GObject.SignalFlags.RUN_FIRST, None, (object,)),
-        # A download Nauta started: finished (title) or failed (title,
-        # message).
+        # A download Nauta started, a song or a whole album or playlist:
+        # finished (title) or failed (title, message).
         "finished": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
         "failed": (GObject.SignalFlags.RUN_FIRST, None, (str, str)),
     }
@@ -40,6 +41,9 @@ class Downloads(Router):
         self.store = store or settings.DownloadStore()
         self.account = self.store.load()
         self.api = MeTube()
+        # Albums and playlists are searched from the phone, with its own
+        # HTTP client: nothing of the download server's login goes there.
+        self.youtube_music = YouTubeMusic()
         self.certificate_error = None
         self.load_certificate()
         self.proxy_cookies = CookieJar(keyring.DOWNLOADS)
@@ -47,7 +51,9 @@ class Downloads(Router):
         self.load_proxy_login()
         self.history = None
         self._watchers = 0
-        self._mine = {}         # url -> (title, timestamps of older items)
+        # url -> [(title, timestamps of older items, _Group or None)]: a
+        # song can be part of two albums or playlists being downloaded.
+        self._mine = {}
         self._timer = 0
         self._polling = False
 
@@ -89,7 +95,8 @@ class Downloads(Router):
         self.proxy_cookies.save({})
         keyring.DOWNLOADS.clear(CREDENTIALS)
         self.account = settings.DownloadServer(
-            audio_format=self.account.audio_format, source=self.account.source)
+            audio_format=self.account.audio_format, source=self.account.source,
+            kind=self.account.kind)
         self.save()
         self.reconnect()
 
@@ -114,26 +121,48 @@ class Downloads(Router):
 
     # --- calls -------------------------------------------------------
 
-    def search(self, query, source, done):
-        self.call(self.api.search, done, query, source)
+    def search(self, query, source, kind, done):
+        """Songs or videos through MeTube; albums and playlists of YouTube
+        Music straight from YouTube Music, which needs no download server
+        (nauta.ytmusic)."""
+        if source == YOUTUBE or kind == SONGS:
+            self.call(self.api.search, done, query, source)
+        else:
+            tasks.run(self.youtube_music.search, done, query, kind)
 
-    def add(self, url, title, done):
+    def browse(self, url, done):
+        """The songs of an album or playlist: done((title, entries), error)."""
+        self.call(self.api.browse, done, url)
+
+    def add(self, url, title, done, songs=None):
         """Queue `url` in the chosen format; done(answer, error). Its end
-        is reported with "finished" or "failed"."""
+        is reported with "finished" or "failed". For an album or playlist,
+        `songs` are its entries from browse(): Nauta follows them and
+        reports the whole once, under `title`."""
         audio_format = self.account.audio_format
+        urls = [s["url"] for s in songs] if songs else [url]
 
         def work():
             # Items of the same URL already in the list are older
             # downloads, not this one.
-            before = {i.get("timestamp") for i in self.api.history()["done"]
-                      if matches(i, url)}
+            history = self.api.history()["done"]
+            before = {u: {i.get("timestamp") for i in history if matches(i, u)}
+                      for u in urls}
             answer = self.api.add(url, audio_format)
             return answer, before
 
         def finished(result, error):
             if error is None:
                 answer, before = result
-                self._mine[url] = (title, before)
+                if songs:
+                    group = _Group(title, len(urls))
+                    titles = {s["url"]: s.get("title") or s["url"] for s in songs}
+                    for u in urls:
+                        self._mine.setdefault(u, []).append(
+                            (titles[u], before[u], group))
+                else:
+                    self._mine.setdefault(url, []).append(
+                        (title, before[url], None))
                 self._schedule()
                 done(answer, None)
             else:
@@ -186,23 +215,65 @@ class Downloads(Router):
         self._schedule()
 
     def _check_mine(self, history):
-        for url, (title, before) in list(self._mine.items()):
-            for item in history["done"]:
-                if matches(item, url) and item.get("timestamp") not in before:
-                    del self._mine[url]
-                    if item.get("status") == "finished":
-                        self.emit("finished", title)
-                    else:
-                        self.emit("failed", title, item.get("msg") or
-                                  item.get("error") or "Download failed")
-                    break
+        for url, jobs in list(self._mine.items()):
+            for title, before, group in list(jobs):
+                self._check_job(history, url, jobs, title, before, group)
+            if not jobs:
+                del self._mine[url]
+
+    def _check_job(self, history, url, jobs, title, before, group):
+        for item in history["done"]:
+            if matches(item, url) and item.get("timestamp") not in before:
+                jobs.remove((title, before, group))
+                if item.get("status") == "finished":
+                    self._report(group, title, None)
+                else:
+                    self._report(group, title, item.get("msg") or
+                                 item.get("error") or "Download failed")
+                return
+        active = any(matches(i, url) for k in ("queue", "pending")
+                     for i in history[k])
+        if not active and not any(matches(i, url) for i in history["done"]):
+            # Gone from the list (cancelled elsewhere, or left out of an
+            # album by MeTube).
+            jobs.remove((title, before, group))
+            if group is not None:
+                group.left -= 1
+                self._report_group(group)
+
+    def _report(self, group, title, message):
+        if group is None:
+            if message is None:
+                self.emit("finished", title)
             else:
-                active = any(matches(i, url) for k in ("queue", "pending")
-                             for i in history[k])
-                if not active and not any(matches(i, url)
-                                          for i in history["done"]):
-                    # Gone from the list (cancelled elsewhere).
-                    del self._mine[url]
+                self.emit("failed", title, message)
+            return
+        group.left -= 1
+        if message is not None:
+            group.failed.append(message)
+        self._report_group(group)
+
+    def _report_group(self, group):
+        if group.left > 0:
+            return
+        if not group.failed:
+            self.emit("finished", group.title)
+        elif len(group.failed) == group.total:
+            self.emit("failed", group.title, group.failed[0])
+        else:
+            n = len(group.failed)
+            self.emit("failed", group.title,
+                      f"{n} of {group.total} songs failed ({group.failed[0]})")
+
+
+class _Group:
+    """An album or playlist downloaded at once: reported when the last
+    of its songs is done."""
+
+    def __init__(self, title, total):
+        self.title = title
+        self.total = self.left = total
+        self.failed = []
 
 
 def is_active(item):

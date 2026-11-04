@@ -35,6 +35,7 @@ python.install_sources(
   'nauta/text.py',
   'nauta/widgets.py',
   'nauta/window.py',
+  'nauta/ytmusic.py',
   subdir: 'nauta',
 )
 # Loaded next to the Python files, also from the source tree.

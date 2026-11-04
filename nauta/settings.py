@@ -49,9 +49,11 @@ class DownloadServer:
     home_networks: list = field(default_factory=list)
     certificate: bool = False
     # MeTube's audio format (nauta.metube.FORMATS) and the last search
-    # source (nauta.metube.SOURCES).
+    # source (nauta.metube.SOURCES) and what was searched there
+    # (nauta.metube.KINDS; YouTube searches videos only).
     audio_format: str = "m4a"
     source: str = "youtube-music"
+    kind: str = "songs"
 
     @property
     def configured(self):

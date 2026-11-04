@@ -1,11 +1,13 @@
-"""Find new music: search YouTube Music (or YouTube) through the user's
-MeTube server and download songs into the library (docs/downloads.md).
-Three pages on the navigation view: setting up the download server,
-search, and MeTube's list of downloads."""
+"""Find new music: search YouTube Music (or YouTube) for songs, albums
+and playlists and download them into the library through the user's
+MeTube server (docs/downloads.md). Pages on the navigation view: setting
+up the download server, search, the songs of an album or playlist, and
+MeTube's list of downloads."""
 from gi.repository import Adw, GLib, Gtk
 from phosh_toolkit.connection_form import ConnectionForm, describe_error
 
 from nauta import USER_AGENT, downloads, metube, settings, text, widgets
+from nauta.ytmusic import ALBUMS
 
 
 def download_form(window, account, toast=None):
@@ -46,6 +48,71 @@ def _icon_button(icon, label):
     button.add_css_class("flat")
     button.update_property([Gtk.AccessibleProperty.LABEL], [label])
     return button
+
+
+def song_row(window, result):
+    """A song or video with its download button (row.download)."""
+    title = result.get("title") or result.get("url") or ""
+    duration = result.get("duration")
+    row = Adw.ActionRow(title=widgets.escape(title),
+                        subtitle=text.duration(duration) if duration else "")
+    row.set_title_lines(2)
+    row.add_prefix(Gtk.Image(icon_name="audio-x-generic-symbolic"))
+    button = _icon_button("folder-download-symbolic", f"Download {title}")
+    button.set_tooltip_text("Download")
+    button.connect("clicked", lambda b: download(window, b, result["url"], title))
+    row.add_suffix(button)
+    row.download = button
+    return row
+
+
+def mark_downloading(button):
+    button.set_sensitive(False)
+    button.set_icon_name("object-select-symbolic")
+    button.set_tooltip_text("Downloading")
+
+
+def download(window, button, url, title, songs=None, label=None, then=None):
+    """Send `url` (a song, or with `songs` a whole album or playlist) to
+    MeTube; the button shows that it is on its way, then() runs after."""
+    button.set_sensitive(False)
+
+    def done(answer, error):
+        if error is not None:
+            button.set_sensitive(True)
+            window.toast(f"Can't download “{title}”: {describe_error(error)}")
+            return
+        if label is None:
+            mark_downloading(button)
+        else:
+            button.set_label(label)
+        window.toast(answer.get("msg") or f"Downloading “{title}”")
+        if then is not None:
+            then()
+    window.downloads.add(url, title, done, songs)
+
+
+def _scrolled(child):
+    clamp = Adw.Clamp(child=child, maximum_size=800, margin_top=6,
+                      margin_bottom=24, margin_start=12, margin_end=12)
+    return Gtk.ScrolledWindow(child=clamp, vexpand=True,
+                              hscrollbar_policy=Gtk.PolicyType.NEVER)
+
+
+def _linked_toggles(choices, active, toggled):
+    """A row of linked toggle buttons, one of them active; returns the box
+    and {value: button}."""
+    box = Gtk.Box(halign=Gtk.Align.CENTER, homogeneous=True)
+    box.add_css_class("linked")
+    buttons = {}
+    group = None
+    for value, name in choices:
+        button = Gtk.ToggleButton(label=name, group=group, active=value == active)
+        button.connect("toggled", lambda b, v: b.get_active() and toggled(v), value)
+        group = group or button
+        box.append(button)
+        buttons[value] = button
+    return box, buttons
 
 
 class DownloadSetupPage(Adw.NavigationPage):
@@ -112,14 +179,14 @@ class DownloadSetupPage(Adw.NavigationPage):
 
 
 class FindMusicPage(Adw.NavigationPage):
-    """Search through MeTube and download a result."""
+    """Search through MeTube (songs, videos) or YouTube Music (albums,
+    playlists) and download a result."""
 
     def __init__(self, window, query=""):
         super().__init__(title="Find New Music", tag="find-music")
         self.window = window
         dl = window.downloads
-        self.entry = Gtk.SearchEntry(placeholder_text="Songs and artists",
-                                     hexpand=True)
+        self.entry = Gtk.SearchEntry(hexpand=True)
         self.entry.update_property([Gtk.AccessibleProperty.LABEL],
                                    ["Search for new music"])
         # Every search runs yt-dlp on the server: search on Enter, not on
@@ -132,68 +199,99 @@ class FindMusicPage(Adw.NavigationPage):
             DownloadsPage(window)))
         header.pack_end(list_button)
 
-        # Where to search: YouTube Music's songs, or YouTube.
-        sources = Gtk.Box(halign=Gtk.Align.CENTER, margin_top=6,
-                          margin_bottom=6, homogeneous=True)
-        sources.add_css_class("linked")
-        self.source_buttons = {}
-        group = None
-        for value, name in metube.SOURCES:
-            button = Gtk.ToggleButton(label=name, group=group,
-                                      active=value == dl.account.source)
-            button.connect("toggled", self._on_source, value)
-            group = group or button
-            sources.append(button)
-            self.source_buttons[value] = button
+        # Where to search: YouTube Music or YouTube; on YouTube Music also
+        # what: songs, albums or playlists.
+        sources, self.source_buttons = _linked_toggles(
+            metube.SOURCES, dl.account.source, self._on_source)
+        kinds, self.kind_buttons = _linked_toggles(
+            metube.KINDS, dl.account.kind, self._on_kind)
+        kinds.set_margin_top(6)
+        self.kinds = Gtk.Revealer(child=kinds)
+        filters = Gtk.Box(orientation=Gtk.Orientation.VERTICAL,
+                          margin_top=6, margin_bottom=6)
+        filters.append(sources)
+        filters.append(self.kinds)
 
         self.stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE,
                                vexpand=True)
         self.stack.add_named(Adw.StatusPage(
             icon_name="folder-download-symbolic", title="Find New Music",
-            description="Search for a song and download it into your "
-                        "library"), "start")
+            description="Search for songs, albums or playlists and download "
+                        "them into your library. A link to an album or "
+                        "playlist works too."), "start")
         self.stack.add_named(widgets.loading_page(), "loading")
         self.stack.add_named(Adw.StatusPage(
             icon_name="system-search-symbolic", title="No Results",
-            description="Try other words or the other source"), "empty")
+            description="Try other words or another filter"), "empty")
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        box.append(sources)
+        box.append(filters)
         box.append(self.stack)
         view = Adw.ToolbarView(content=box)
         view.add_top_bar(header)
         self.set_child(view)
         self._query = None
+        self._update_filters()
         self.connect("shown", lambda *_: self.entry.grab_focus())
         if query:
-            self.search(query)
+            # After this page is on the navigation view: a link opens its
+            # album or playlist on top of it.
+            self.entry.set_text(query)
+            GLib.idle_add(lambda: self._on_search(self.entry))
 
     @property
     def source(self):
         return self.window.downloads.account.source
 
+    @property
+    def kind(self):
+        """What is searched: songs, albums or playlists on YouTube Music,
+        videos (metube.SONGS) on YouTube."""
+        if self.source == metube.YOUTUBE:
+            return metube.SONGS
+        return self.window.downloads.account.kind
+
     def search(self, query):
         self.entry.set_text(query)
         self._on_search(self.entry)
 
-    def _on_source(self, button, value):
-        if not button.get_active() or value == self.source:
-            return
+    def _update_filters(self):
+        self.kinds.set_reveal_child(self.source == metube.YOUTUBE_MUSIC)
+        self.entry.set_placeholder_text({
+            metube.SONGS: "Songs and artists", ALBUMS: "Albums and artists"
+        }.get(self.kind, "Playlists"))
+
+    def _changed(self, field, value):
         dl = self.window.downloads
-        dl.account.source = value
+        if getattr(dl.account, field) == value:
+            return
+        setattr(dl.account, field, value)
         dl.save()
+        self._update_filters()
         if self.entry.get_text().strip():
             self._on_search(self.entry)
+
+    def _on_source(self, value):
+        self._changed("source", value)
+
+    def _on_kind(self, value):
+        self._changed("kind", value)
 
     def _on_search(self, entry):
         query = entry.get_text().strip()
         if not query:
             self.stack.set_visible_child_name("start")
             return
-        key = (query, self.source)
+        link = metube.collection_link(query)
+        if link:
+            # A pasted album or playlist: straight to its songs.
+            self.window.nav.push(CollectionPage(self.window, {"url": link}))
+            return
+        key = (query, self.source, self.kind)
         self._query = key
         self.stack.set_visible_child_name("loading")
         self.window.downloads.search(
-            query, self.source, lambda r, e: self._on_results(key, r, e))
+            query, self.source, self.kind,
+            lambda r, e: self._on_results(key, r, e))
 
     def _on_results(self, key, results, error):
         if key != self._query:
@@ -214,41 +312,105 @@ class FindMusicPage(Adw.NavigationPage):
                           valign=Gtk.Align.START)
         box.add_css_class("boxed-list")
         for result in results:
-            box.append(self._row(result))
-        clamp = Adw.Clamp(child=box, maximum_size=800, margin_top=6,
-                          margin_bottom=24, margin_start=12, margin_end=12)
-        self.stack.add_named(Gtk.ScrolledWindow(
-            child=clamp, hscrollbar_policy=Gtk.PolicyType.NEVER,
-            vexpand=True), "results")
+            box.append(self._collection_row(result) if result.get("kind")
+                       else song_row(self.window, result))
+        self.stack.add_named(_scrolled(box), "results")
         self.stack.set_visible_child_name("results")
 
-    def _row(self, result):
-        title = result.get("title") or result.get("url") or ""
-        duration = result.get("duration")
+    def _collection_row(self, result):
+        """An album or playlist: opens its songs; the button downloads all
+        of them."""
+        title = result["title"]
         row = Adw.ActionRow(title=widgets.escape(title),
-                            subtitle=text.duration(duration) if duration else "")
+                            subtitle=widgets.escape(result.get("subtitle") or ""),
+                            activatable=True)
         row.set_title_lines(2)
-        row.add_prefix(Gtk.Image(icon_name="audio-x-generic-symbolic"))
-        button = _icon_button("folder-download-symbolic", f"Download {title}")
-        button.set_tooltip_text("Download")
-        button.connect("clicked", self._on_download, result, title)
-        row.add_suffix(button)
-        row.download = button
+        row.set_subtitle_lines(2)
+        row.add_prefix(Gtk.Image(icon_name="media-optical-cd-audio-symbolic"
+                                 if result["kind"] == ALBUMS
+                                 else "view-list-symbolic"))
+        row.add_suffix(Gtk.Image(icon_name="go-next-symbolic"))
+        row.connect("activated", lambda *_: self.window.nav.push(
+            CollectionPage(self.window, result)))
         return row
 
-    def _on_download(self, button, result, title):
-        button.set_sensitive(False)
 
-        def done(answer, error):
-            if error is not None:
-                button.set_sensitive(True)
-                self.window.toast(f"Can't download “{title}”: "
-                                  f"{describe_error(error)}")
-                return
-            button.set_icon_name("object-select-symbolic")
-            button.set_tooltip_text("Downloading")
-            self.window.toast(answer.get("msg") or f"Downloading “{title}”")
-        self.window.downloads.add(result["url"], title, done)
+class CollectionPage(Adw.NavigationPage):
+    """The songs of an album or playlist, listed by MeTube: download all
+    of them at once, or single songs."""
+
+    def __init__(self, window, result):
+        title = result.get("title") or ""
+        super().__init__(title=title or "Album or Playlist")
+        self.window = window
+        self.result = result
+        self.stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE)
+        self.stack.add_named(widgets.loading_page(), "loading")
+        self.stack.add_named(Adw.StatusPage(
+            icon_name="view-list-symbolic", title="No Songs",
+            description="This album or playlist is empty or unavailable"),
+            "empty")
+        self.download_all = None
+        view = Adw.ToolbarView(content=self.stack)
+        view.add_top_bar(Adw.HeaderBar())
+        self.set_child(view)
+        self.load()
+
+    def load(self):
+        self.stack.set_visible_child_name("loading")
+        self.window.downloads.browse(self.result["url"], self._on_songs)
+
+    def _on_songs(self, answer, error):
+        old = self.stack.get_child_by_name("songs")
+        if old is not None:
+            self.stack.remove(old)
+        if error is not None:
+            self.stack.add_named(widgets.error_page(
+                "Can't List the Songs", describe_error(error), self.load),
+                "songs")
+            self.stack.set_visible_child_name("songs")
+            return
+        name, songs = answer
+        title = self.result.get("title") or name or self.result["url"]
+        self.set_title(title)
+        if not songs:
+            self.stack.set_visible_child_name("empty")
+            return
+        body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12,
+                       margin_top=12)
+        heading = Gtk.Label(label=title, wrap=True,
+                            justify=Gtk.Justification.CENTER)
+        heading.add_css_class("title-2")
+        body.append(heading)
+        details = self.result.get("subtitle") or ""
+        count = (f"{len(songs)} or more songs"
+                 if len(songs) >= metube.COLLECTION_LIMIT
+                 else f"{len(songs)} song" + ("" if len(songs) == 1 else "s"))
+        info = Gtk.Label(label=" • ".join(p for p in (details, count) if p),
+                         wrap=True, justify=Gtk.Justification.CENTER)
+        info.add_css_class("dimmed")
+        body.append(info)
+        self.download_all = _pill("Download All")
+        self.download_all.connect("clicked", self._on_download_all, title, songs)
+        body.append(self.download_all)
+        box = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE,
+                          valign=Gtk.Align.START, margin_top=12)
+        box.add_css_class("boxed-list")
+        self.rows = [song_row(self.window, song) for song in songs]
+        for row in self.rows:
+            box.append(row)
+        body.append(box)
+        self.stack.add_named(_scrolled(body), "songs")
+        self.stack.set_visible_child_name("songs")
+
+    def _on_download_all(self, button, title, songs):
+        # MeTube gets the album or playlist itself: it numbers the tracks
+        # and keeps them together in a folder.
+        def started():
+            for row in self.rows:
+                mark_downloading(row.download)
+        download(self.window, button, self.result["url"], title, songs,
+                 label="Downloading", then=started)
 
 
 def status_text(item):

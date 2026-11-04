@@ -9,7 +9,9 @@ from phosh_toolkit.route import LOCAL, REMOTE
 
 from conftest import P12_PASSWORD, run_until
 from nauta import USER_AGENT, downloads, keyring, settings
-from nauta.metube import YOUTUBE, YOUTUBE_MUSIC, MeTube, matches, search_url, video_id
+from nauta.metube import (SONGS, YOUTUBE, YOUTUBE_MUSIC, MeTube, collection_link, matches,
+                          search_url, video_id)
+from nauta.ytmusic import ALBUMS, PLAYLISTS, YouTubeMusic, collection_url, parse
 
 
 def test_search_urls():
@@ -19,6 +21,51 @@ def test_search_urls():
     assert video_id("https://music.youtube.com/watch?v=abc&list=x") == "abc"
     item = {"id": "abc", "url": "https://www.youtube.com/watch?v=abc"}
     assert matches(item, "https://music.youtube.com/watch?v=abc")
+
+
+def test_collection_links():
+    album = "https://music.youtube.com/browse/MPREb_abc"
+    assert collection_link(f" {album} ") == album
+    assert collection_link("https://music.youtube.com/playlist?list=OLAK5uy_x&si=y") == \
+        "https://music.youtube.com/playlist?list=OLAK5uy_x"
+    assert collection_link("https://youtube.com/watch?v=abc&list=PLx") == \
+        "https://www.youtube.com/playlist?list=PLx"
+    for text in ("harbour lights", "https://music.youtube.com/watch?v=abc",
+                 "https://example.com/playlist?list=PLx", "ytsearch5:a"):
+        assert collection_link(text) == ""
+    assert collection_url("MPREb_abc") == album
+    assert collection_url("VLPLx") == "https://music.youtube.com/playlist?list=PLx"
+    assert collection_url("UCartist") == ""
+    assert parse({}, ALBUMS) == [] and parse({"contents": None}, ALBUMS) == []
+
+
+def test_youtube_music_search(youtube_music):
+    api = YouTubeMusic(base_url=youtube_music.url)
+    albums = api.search("  harbour   lights ", ALBUMS)
+    assert albums == [{"url": "https://music.youtube.com/browse/MPREb_demoHarbour01",
+                       "title": "Saltwater Letters", "kind": ALBUMS,
+                       "subtitle": "Album • Harbour Lights • 2024"}]
+    method, path, body = youtube_music.requests[-1]
+    assert body["query"] == "harbour lights"
+    assert body["context"]["client"]["clientName"] == "WEB_REMIX"
+    playlists = api.search("harbour", PLAYLISTS)
+    assert [p["title"] for p in playlists] == ["Coastal Evenings"]
+    # Featured playlists first, then community playlists.
+    assert len(youtube_music.requests) == 3
+    assert api.search("nothing like this", ALBUMS) == []
+
+
+def test_browse_and_add_an_album(metube):
+    api = MeTube()
+    api.base_url = metube.url
+    url = "https://music.youtube.com/browse/MPREb_demoHarbour01"
+    title, songs = api.browse(url)
+    assert title == "Saltwater Letters"
+    assert [s["title"] for s in songs] == ["Northern Tide", "Lanterns on the Pier",
+                                           "Saltwater Letters"]
+    assert metube.requests[-1][2]["playlist_item_limit"] == 200
+    api.add(url)
+    assert [i["title"] for i in api.history()["queue"]] == [s["title"] for s in songs]
 
 
 def test_probe_search_and_add(metube):
@@ -100,6 +147,53 @@ def test_finished_and_failed_downloads_are_reported(metube, monkeypatch):
     run_until(lambda: len(events) == 3, timeout=20)
 
 
+def test_whole_album_and_playlist_reported_once(metube, monkeypatch):
+    dl = _downloads("", metube.url, [], None, monkeypatch)
+    monkeypatch.setattr(downloads, "POLL", 1)
+    events = []
+    dl.connect("finished", lambda d, title: events.append(("finished", title)))
+    dl.connect("failed", lambda d, title, msg: events.append(("failed", title, msg)))
+    added = []
+    for url in ("https://music.youtube.com/browse/MPREb_demoHarbour01",
+                "https://music.youtube.com/playlist?list=PLdemoCoastal00001"):
+        listed = []
+        dl.browse(url, lambda r, e: listed.append(r))
+        run_until(lambda: listed)
+        title, songs = listed[0]
+        dl.add(url, title, lambda a, e: added.append(e), songs)
+    run_until(lambda: len(added) == 2)
+    assert added == [None, None]
+    # "Lanterns on the Pier" is on the album and in the playlist.
+    assert len(dl._mine) == 8 and sum(len(j) for j in dl._mine.values()) == 9
+    run_until(lambda: len(events) == 2, timeout=20)
+    assert ("finished", "Saltwater Letters") in events
+    # The playlist's "Unavailable Session" failed, the other five not.
+    assert ("failed", "Coastal Evenings", "1 of 6 songs failed (Video unavailable)") in events
+    assert not dl._mine
+
+
+def test_search_kinds(metube, youtube_music, monkeypatch):
+    """Songs and videos through MeTube, albums and playlists straight from
+    YouTube Music, without the download server's proxy login."""
+    metube.proxy_basic = "phone:s3cret"
+    from phosh_toolkit.proxy_login import ProxyCredentials
+    ProxyCredentials(keyring.DOWNLOADS).set(metube.url, "phone", "s3cret")
+    dl = _downloads("", metube.url, [], None, monkeypatch)
+    dl.youtube_music.base_url = youtube_music.url
+    done = []
+    dl.search("harbour", YOUTUBE_MUSIC, ALBUMS, lambda r, e: done.append((r, e)))
+    run_until(lambda: done)
+    assert done[0][1] is None and done[0][0][0]["title"] == "Saltwater Letters"
+    assert not [r for r in metube.requests if r[1] == "browse"]
+    headers = youtube_music.headers[-1]
+    assert "Authorization" not in headers and "Cookie" not in headers
+    assert headers["User-Agent"].startswith("Nauta/")
+    done.clear()
+    dl.search("harbour", YOUTUBE, ALBUMS, lambda r, e: done.append((r, e)))
+    run_until(lambda: done)
+    assert done[0][1] is None and done[0][0][0]["duration"]
+
+
 def test_mtls(mtls_metube, pki, trust, monkeypatch):
     http = Client(USER_AGENT)
     http.tls_database = trust
@@ -118,7 +212,7 @@ def test_mtls(mtls_metube, pki, trust, monkeypatch):
     assert dl.certificate_error is None
     assert _resolve(dl) is None
     done = []
-    dl.search("juniper", YOUTUBE_MUSIC, lambda r, e: done.append((r, e)))
+    dl.search("juniper", YOUTUBE_MUSIC, SONGS, lambda r, e: done.append((r, e)))
     run_until(lambda: done)
     assert done[0][1] is None and done[0][0][0]["title"] == "Pine Smoke"
     # Its certificate password lives apart from the music server's.

@@ -1,10 +1,10 @@
 ---
 type: Concept
 title: Finding and downloading new music with MeTube
-description: How Nauta searches YouTube Music or YouTube through the user's own MeTube server, downloads songs into the Navidrome library, and reaches MeTube with the same home/remote route, client certificate and proxy login as the music server.
-tags: [downloads, metube, yt-dlp, search, connection, mtls, proxy-login]
+description: How Nauta searches YouTube Music or YouTube for songs, albums and playlists, downloads them into the Navidrome library through the user's own MeTube server, and reaches MeTube with the same home/remote route, client certificate and proxy login as the music server.
+tags: [downloads, metube, yt-dlp, search, albums, playlists, youtube-music, connection, mtls, proxy-login]
 resource: ../nauta/downloads.py
-generated: { by: claude-code/2.1.318, at: 2026-11-04T09:30:00Z }
+generated: { by: claude-code/2.1.318, at: 2026-11-04T16:00:00Z }
 sources:
   - id: metube
     resource: https://github.com/alexta69/metube/tree/7e73766238f3fc491b2aeba0c3c8b415c408eaaa/app
@@ -12,14 +12,17 @@ sources:
   - id: yt-dlp
     resource: https://github.com/yt-dlp/yt-dlp/blob/412e7f0/yt_dlp/extractor/youtube/_search.py
     title: yt-dlp, YoutubeMusicSearchURLIE and YoutubeSearchIE (commit 412e7f0, 2026-11-04)
+  - id: yt-dlp-api
+    resource: https://github.com/yt-dlp/yt-dlp/tree/412e7f0/yt_dlp/extractor/youtube
+    title: yt-dlp, _base.py (client "web_music", _call_api, generate_api_headers) and _tab.py (_music_reponsive_list_entry, MPREb_ album URLs) (commit 412e7f0, 2026-11-04)
 ---
 
 # What it is
 
 "Find New Music" (main menu, `Ctrl+D`, and the button on an empty
-library search) searches for songs that are not in the library yet and
-downloads them on the server, where Navidrome picks them up. Nauta
-does not download anything itself: the work is done by
+library search) searches for songs, albums and playlists that are not
+in the library yet. It downloads them on the server, where Navidrome
+picks them up. Nauta does not download anything itself: the work is done by
 [MeTube](https://github.com/alexta69/metube), a web front end for
 yt-dlp that **the user runs next to Navidrome**
 ([decision](decisions/metube-downloads.md)).
@@ -78,22 +81,71 @@ a download it started is running (`Downloads.watch()`).
 
 # Search
 
+Two rows of linked buttons sit under the search entry. The first picks
+the source: **YouTube Music** or **YouTube**. With YouTube Music a
+second row picks what to search: **Songs**, **Albums** or **Playlists**.
+YouTube searches videos only, so the second row is hidden there. Both
+choices are kept in `downloads.json` (`source`, `kind`).
+
+Searching runs yt-dlp on the server and takes a few seconds, so Nauta
+searches on Enter, not on every key, with a 90 s timeout.
+
+## Songs and videos: MeTube's `/browse`
+
 MeTube has no search call. `/browse` "flat-probes a playlist/channel URL
 and lists its entries; queues nothing", and MeTube's URL guard lets
 yt-dlp's search prefixes through unchanged ("Inputs without a `://` …
 `ytsearch:` … are allowed")[^metube]. A yt-dlp search is a playlist, so:
 
-- **YouTube Music** (default): `https://music.youtube.com/search?q=<query>#songs`,
+- **YouTube Music, Songs** (default): `https://music.youtube.com/search?q=<query>#songs`,
   yt-dlp's `youtube:music:search_url` with the "songs" section[^yt-dlp].
   Flat entries carry only the song title (no artist, no duration), so
   rows show the title only.
 - **YouTube**: `ytsearch20:<query>`, entries with the video title
   (usually "Artist - Song (…)") and duration.
 
-The source is a toggle on the search page and kept in `downloads.json`.
-Searching runs yt-dlp on the server and takes a few seconds, so Nauta
-searches on Enter, not on every key, with a 90 s timeout. "No entries
-found at this URL." is an empty result, not an error.
+"No entries found at this URL." is an empty result, not an error.
+
+## Albums and playlists: from the phone
+
+`/browse` can't list albums or playlists. yt-dlp's results for those
+sections are links without titles. MeTube doesn't treat them as entries
+and answers with the songs of the first album instead
+([decision](decisions/youtube-music-search.md)). So Nauta asks YouTube
+Music's web API itself (`nauta/ytmusic.py`), with request facts from
+yt-dlp[^yt-dlp-api]:
+
+| | |
+|---|---|
+| Request | `POST https://music.youtube.com/youtubei/v1/search?prettyPrint=false`, JSON `{"context": {"client": {"clientName": "WEB_REMIX", "clientVersion": "1.20260707.12.00", "hl": <system language>}}, "query", "params"}` |
+| Headers | `X-YouTube-Client-Name: 67`, `X-YouTube-Client-Version`, `Origin: https://music.youtube.com`, Nauta's `User-Agent`; no key, no cookies |
+| `params` Albums | `EgWKAQIYAWoKEAoQAxAEEAkQBQ==` |
+| `params` Playlists | featured `EgeKAQQoADgBagwQAxAJEAQQDhAKEAU==`, then community `EgeKAQQoAEABagoQChADEAQQCRAF` (two requests, merged) |
+| Answer read | `contents.tabbedSearchResultsRenderer.tabs[0]…sectionListRenderer.contents[].musicShelfRenderer.contents[].musicResponsiveListItemRenderer`: title = text runs of `flexColumns[0]`, the line under it = runs of `flexColumns[1]` ("Album • Artist • 2024"), link = `navigationEndpoint.browseEndpoint.browseId` |
+| Link for MeTube | `MPREb_…` → `https://music.youtube.com/browse/MPREb_…` (yt-dlp resolves it to the album's playlist); `VL<id>` → `https://music.youtube.com/playlist?list=<id>` |
+
+This client has its own HTTP connection: none of the download
+server's certificate, cookies or proxy login go to YouTube. The answer's
+layout is not official and not verified against the live service yet.
+The parser skips anything it doesn't recognise, so a change on
+YouTube's side gives no results rather than a crash.
+
+## An album or a playlist
+
+Tapping an album or playlist opens its page (pushed on the navigation
+view, swipe back closes it). It lists the songs through `/browse` on
+the link, at most 200 (`playlist_item_limit`). From there you can:
+
+- **Download All**: sends the album or playlist link itself to `/add`.
+  MeTube queues each song before it answers (up to 120 s). It writes
+  the track number from the playlist position (`MusicMetadataPreProcessor`)
+  and applies its playlist folder template (`OUTPUT_TEMPLATE_PLAYLIST`)[^metube].
+- **A single song**: its own download button, as in the search results.
+
+Pasting a link to an album or playlist into the search field
+(`music.youtube.com/browse/MPREb_…`, `…/playlist?list=…`, or a
+`watch?…&list=…` link) opens its page directly
+(`metube.collection_link`).
 
 # Downloading
 
@@ -107,6 +159,12 @@ Navidrome adds it at its next scan.", "error" shows MeTube's message.
 An older download of the same song in the list is told apart by its
 timestamp, taken just before `/add`.
 
+A whole album or playlist is followed through the songs `/browse`
+listed. It is reported once, when the last of them is done:
+"Downloaded “Album”", or "Can't download “Album”: 2 of 12 songs failed
+(…)". A song in two albums being downloaded counts for both. A song
+that never appears in MeTube's list counts as done.
+
 The Downloads page lists MeTube's queue and done list (all of MeTube's
 downloads, also those started in its web UI) with cancel and "remove
 from the list".
@@ -114,20 +172,41 @@ from the list".
 # Not covered yet
 
 - Asking Navidrome to scan right away (`startScan` needs an admin user).
-- Artist and album in YouTube Music results: yt-dlp's flat search
+- Artist and album in YouTube Music song results: yt-dlp's flat search
   entries have the title only; full extraction per result would be
   much slower.
+- Searching artists, and YouTube's own playlists (not YouTube Music's):
+  same `/browse` limit as albums, not built yet.
+- Covers of albums and playlists in the results (more image hosts).
+- Playlists with more than 200 songs: the page lists the first 200;
+  "Download All" still gets all of them.
 - MeTube's Socket.IO events instead of polling.
 
 # Verified (2026-11-04, cloud container)
 
-`tests/test_downloads.py` and `tests/test_ui.py::test_find_and_download_new_music`
-against the MeTube stand-in `nauta.demo.DemoMeTube` (answers shaped as
-above): search on both sources, add with the chosen format, finished and
-failed downloads reported, a repeated download not mistaken for the old
-one, the strict route at home and away, mutual TLS with an
-`openssl`-made certificate in its own keyring schema, and the proxy
-login (401 without the cookie). Screenshots at 360×720 and 1000×700.
-Not yet against a real MeTube: YouTube and a running MeTube are not
-available in the cloud container, so whether yt-dlp's YouTube Music
-search still returns songs today is unchecked (M2 exit criterion).
+`tests/test_downloads.py`, `tests/test_ui.py::test_find_and_download_new_music`
+and `tests/test_ui.py::test_find_albums_and_playlists`. They run against
+the MeTube stand-in `nauta.demo.DemoMeTube` (answers shaped as above) and
+the YouTube Music stand-in `nauta.demo.DemoYouTubeMusic`. Covered:
+
+- search on both sources and with every filter
+- albums and playlists listed without a request to MeTube, and without
+  the download server's proxy login in the request to YouTube Music
+- an album downloaded whole (one `/add` of its link) and reported once
+- a playlist with one failing song reported as "1 of 6 songs failed"
+- a song in both an album and a playlist
+- a single song from a playlist
+- a pasted playlist link
+- add with the chosen format, finished and failed downloads reported, a
+  repeated download not mistaken for the old one
+- the strict route at home and away, mutual TLS with an
+  `openssl`-made certificate in its own keyring schema, and the proxy
+  login (401 without the cookie)
+
+Screenshots at 360×720 and 1000×700.
+
+Not yet checked against a real MeTube or the real YouTube Music:
+`music.youtube.com`, `www.youtube.com` and a running MeTube are not
+available in the cloud container. So it is unchecked whether yt-dlp's
+YouTube Music song search still returns songs today, and whether the
+search API answers as described (M2 exit criterion).

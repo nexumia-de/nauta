@@ -15,7 +15,7 @@ os.environ["NAUTA_KEYRING"] = "memory"
 from gi.repository import Gio  # noqa: E402
 from phosh_toolkit.testing import P12_PASSWORD, make_pki, run_until  # noqa: E402,F401
 
-from nauta.demo import DemoMeTube, DemoServer  # noqa: E402
+from nauta.demo import DemoMeTube, DemoServer, DemoYouTubeMusic  # noqa: E402
 
 DEMO = Path(__file__).resolve().parent / "data" / "demo"
 
@@ -66,5 +66,12 @@ def metube():
 def mtls_metube(pki):
     server = DemoMeTube(DEMO, tls=(pki / "server.pem", pki / "server.key",
                                    pki / "ca.pem")).start()
+    yield server
+    server.stop()
+
+
+@pytest.fixture
+def youtube_music():
+    server = DemoYouTubeMusic(DEMO).start()
     yield server
     server.stop()
