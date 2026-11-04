@@ -59,3 +59,13 @@ commit the manifest pins (`tests.yml`).
 `NAUTA_KEYRING=memory` keeps secrets in memory (tests, screenshots).
 Screenshots of other states: `-a "app.show-view(1)"` (Artists),
 `-a "app.show-album('<id>')"`, `-a "app.play-album('<id>')"`.
+
+# UI tests and animations
+
+The UI tests switch GTK's animations off (`tests/conftest.py`). On CI's
+xvfb with software rendering, an animated spinner (a loading page)
+redraws so slowly that GTK's frame source is always ready; it outranks
+the idle callbacks through which `phosh_toolkit.tasks` delivers worker
+results, so a dialog stayed on its spinner for 30 s (found 2026-11-04,
+measured as a main context busy in 200 of 200 iterations; locally 12–72
+of 300). Whether a slow phone can show the same delay is not known.

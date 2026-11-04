@@ -6,8 +6,7 @@ import os
 
 import pytest
 
-from conftest import run_until as _run_until
-from conftest import visible
+from conftest import run_until, visible
 
 if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
     pytest.skip("needs a display", allow_module_level=True)
@@ -16,57 +15,13 @@ import gi  # noqa: E402
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import GLib, Gtk  # noqa: E402
+from gi.repository import Gtk  # noqa: E402
 from phosh_toolkit import router  # noqa: E402
 
 from nauta import connection, keyring, settings  # noqa: E402
 from nauta.demo import PASSWORD  # noqa: E402
 
 pytestmark = pytest.mark.usefixtures("quiet")
-
-
-DEMO = []      # the current test's demo server, for diagnostics
-
-
-@pytest.fixture(autouse=True)
-def remember_demo(demo):
-    DEMO[:] = [demo]
-    yield
-
-
-def run_until(predicate, timeout=10):
-    """conftest.run_until, dumping every thread's stack on a timeout
-    (diagnostics for a hang seen only in CI)."""
-    import faulthandler
-    import sys
-    # If the main thread itself blocks, this shows where (from a watchdog
-    # thread).
-    faulthandler.dump_traceback_later(8, file=sys.stderr)
-    try:
-        _run_until(predicate, timeout)
-    except TimeoutError:
-        import gc
-        import sys
-
-        from gi.repository import GLib
-        from phosh_toolkit.media import Media
-        context = GLib.MainContext.default()
-        busy = sum(bool(context.pending()) for _ in range(200)
-                   if context.iteration(False) or True)
-        alive = [m for m in gc.get_objects() if isinstance(m, Media)
-                 and m.pipeline is not None]
-        print(f"main context pending in {busy}/200 iterations; "
-              f"pipelines alive: {[(m.pipeline.get_state(0)[1].value_nick, m.playing) for m in alive]}; "
-              f"predicate after: {predicate()}", file=sys.stderr)
-        import time
-        now = time.monotonic()
-        for demo in DEMO:
-            print("demo arrivals (s ago):",
-                  [(round(now - t, 1), m) for t, m in demo.arrivals[-25:]],
-                  file=sys.stderr)
-        raise
-    finally:
-        faulthandler.cancel_dump_traceback_later()
 
 ALBUM = "al-195308cfb6d233b94d9b"       # Low Tide, liked in the demo
 SONG = "tr-a4151fee60ea58667850"        # its first song, with lyrics
@@ -86,11 +41,6 @@ def window(app, demo, monkeypatch):
     monkeypatch.setattr(win, "toast", win.toasts_seen.append)
     win.present()
     run_until(lambda: win.favourites.loaded, 10)
-    # Let the first albums and their covers load before the test starts.
-    albums = win.main.views["albums"]
-    run_until(lambda: albums.get_visible_child_name() == "content", 10)
-    settle = GLib.get_monotonic_time() + 500_000
-    run_until(lambda: GLib.get_monotonic_time() > settle, 5)
     yield win
     win.player.clear()
     win.sleep_timer.cancel()

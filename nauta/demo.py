@@ -15,7 +15,6 @@ import math
 import ssl
 import struct
 import threading
-import time
 import wave
 import zlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -37,7 +36,6 @@ class DemoServer:
         self.albums = {a["id"]: a for a in self.library["albums"]}
         self.artists = {a["id"]: a for a in self.library["artists"]}
         self.requests = []     # (method, path, form) seen
-        self.arrivals = []     # (monotonic time, method name), for tests
         self.scrobbles = []    # (song id, submission)
         # Changed by star/unstar and the playlist calls, like a server.
         self.starred = set(self.library.get("starred", []))
@@ -387,8 +385,6 @@ class _Handler(BaseHTTPRequestHandler):
             lists.setdefault(key, []).append(value)
         method = parts.path.rsplit("/", 1)[-1].removesuffix(".view")
         self.owner.requests.append((self.command, self.path, form))
-        if hasattr(self.owner, "arrivals"):
-            self.owner.arrivals.append((time.monotonic(), method))
         if not parts.path.startswith("/rest/"):
             self._send(404, b"not found", "text/plain")
             return

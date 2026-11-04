@@ -83,12 +83,16 @@ def youtube_music():
 def app():
     """One application for all UI tests: a second one with the same id
     can't register on the session bus."""
-    from gi.repository import Adw
+    from gi.repository import Adw, Gtk
 
     from nauta.main import Application
     application = Application()
     application.register(None)
     Adw.init()
+    # No animations: a spinner redrawing all the time keeps GTK's frame
+    # source ready on slow software rendering (CI's xvfb), and the idle
+    # callbacks that deliver worker results then never run.
+    Gtk.Settings.get_default().props.gtk_enable_animations = False
     yield application
 
 
