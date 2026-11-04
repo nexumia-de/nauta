@@ -29,8 +29,10 @@ Read from Navidrome's `main` at commit `7c1e68a` (2026-11-03, after
 tag v0.64.2), cloned from GitHub. The public docs
 (`www.navidrome.org`, `opensubsonic.netlify.app`, `www.subsonic.org`)
 and the demo server are blocked in the cloud environment
-([dev environment](dev-environment.md)). **Not yet verified against a
-running Navidrome** (issue in M1).
+([dev environment](dev-environment.md)). The owner confirmed on
+2026-11-04 that browsing and playing work against their Navidrome, at
+home and on mobile data (nexumia-de/nauta#6); the calls added for the
+[library features](library.md) are not yet tried there.
 
 # Requests
 

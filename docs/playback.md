@@ -104,7 +104,8 @@ played, or at its end.
   with `SUSPEND`, released on pause), so Phosh does not suspend the
   phone with the screen off. Without a session manager the call returns
   0 and nothing is inhibited.
-- Not yet checked on the phone (nexumia-de/nauta#4).
+- Confirmed by the owner on the phone (2026-11-04): music keeps playing
+  with the screen off (nexumia-de/nauta#4).
 
 # Media controls (`mpris.py`)
 
@@ -123,7 +124,8 @@ length and cover, with play/pause, previous, next and seeking.
   seeks; `PropertiesChanged` when a watched property changes.
 - The cover is a `file://` URI of the cached cover (300 px), never a
   server URL: those would need credentials.
-- Not yet checked on the phone's lock screen (nexumia-de/nauta#5).
+- Confirmed by the owner on the phone (2026-11-04): Phosh's lock screen
+  shows the song and its controls work (nexumia-de/nauta#5).
 
 # Not yet
 

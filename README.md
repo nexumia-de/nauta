@@ -31,7 +31,8 @@ bottom while you browse.
   search asks YouTube Music directly from the phone. See
   [docs/downloads.md](docs/downloads.md).
 
-Status: first version (milestone M0), not yet tested on a phone. See
+Status: in daily use on a Phosh phone against a real Navidrome
+(background playback, lock-screen controls, home and mobile data). See
 the [milestones](https://github.com/nexumia-de/nauta/milestones) and
 [docs/roadmap.md](docs/roadmap.md).
 
