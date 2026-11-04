@@ -37,6 +37,11 @@ def remember_demo(demo):
 def run_until(predicate, timeout=10):
     """conftest.run_until, dumping every thread's stack on a timeout
     (diagnostics for a hang seen only in CI)."""
+    import faulthandler
+    import sys
+    # If the main thread itself blocks, this shows where (from a watchdog
+    # thread).
+    faulthandler.dump_traceback_later(8, file=sys.stderr)
     try:
         _run_until(predicate, timeout)
     except TimeoutError:
@@ -60,6 +65,8 @@ def run_until(predicate, timeout=10):
                   [(round(now - t, 1), m) for t, m in demo.arrivals[-25:]],
                   file=sys.stderr)
         raise
+    finally:
+        faulthandler.cancel_dump_traceback_later()
 
 ALBUM = "al-195308cfb6d233b94d9b"       # Low Tide, liked in the demo
 SONG = "tr-a4151fee60ea58667850"        # its first song, with lyrics
