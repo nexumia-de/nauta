@@ -25,6 +25,15 @@ from nauta.demo import PASSWORD  # noqa: E402
 pytestmark = pytest.mark.usefixtures("quiet")
 
 
+DEMO = []      # the current test's demo server, for diagnostics
+
+
+@pytest.fixture(autouse=True)
+def remember_demo(demo):
+    DEMO[:] = [demo]
+    yield
+
+
 def run_until(predicate, timeout=10):
     """conftest.run_until, dumping every thread's stack on a timeout
     (diagnostics for a hang seen only in CI)."""
@@ -44,6 +53,12 @@ def run_until(predicate, timeout=10):
         print(f"main context pending in {busy}/200 iterations; "
               f"pipelines alive: {[(m.pipeline.get_state(0)[1].value_nick, m.playing) for m in alive]}; "
               f"predicate after: {predicate()}", file=sys.stderr)
+        import time
+        now = time.monotonic()
+        for demo in DEMO:
+            print("demo arrivals (s ago):",
+                  [(round(now - t, 1), m) for t, m in demo.arrivals[-25:]],
+                  file=sys.stderr)
         raise
 
 ALBUM = "al-195308cfb6d233b94d9b"       # Low Tide, liked in the demo
