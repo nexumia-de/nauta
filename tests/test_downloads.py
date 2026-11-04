@@ -137,3 +137,21 @@ def test_proxy_login(metube, monkeypatch):
     assert CookieJar(keyring.KEYRING).load() == {}
     dl = downloads.Downloads(dl.store, watch=False)
     assert _resolve(dl) is None
+
+
+def test_proxy_basic_auth(metube, monkeypatch):
+    """Pangolin's header authentication in front of MeTube: user name and
+    password from the keyring, sent only to MeTube's address."""
+    from phosh_toolkit.proxy_login import ProxyCredentials
+    metube.proxy_basic = "phone:s3cret"
+    dl = _downloads("", metube.url, [], None, monkeypatch)
+    error = _resolve(dl)
+    assert error.kind == PROXY_LOGIN and error.wants_basic
+    assert dl.proxy_error is error
+    ProxyCredentials(keyring.DOWNLOADS).set(metube.url, "phone", "s3cret")
+    assert ProxyCredentials(keyring.KEYRING).load() == {}
+    dl.reconnect()
+    run_until(lambda: dl.state == REMOTE)
+    assert metube.requests[-1][1] == "version"
+    dl.forget()
+    assert ProxyCredentials(keyring.DOWNLOADS).load() == {}

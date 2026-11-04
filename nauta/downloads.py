@@ -7,10 +7,11 @@ import logging
 from gi.repository import GLib, GObject
 from phosh_toolkit import tls
 from phosh_toolkit.http import NETWORK, HttpError
-from phosh_toolkit.proxy_login import CookieJar
+from phosh_toolkit.proxy_login import CookieJar, ProxyCredentials
 from phosh_toolkit.router import Router
 
 from nauta import keyring, settings
+from nauta.keyring import CREDENTIALS
 from nauta.metube import ACTIVE, MeTube, matches
 
 log = logging.getLogger("nauta.downloads")
@@ -42,7 +43,8 @@ class Downloads(Router):
         self.certificate_error = None
         self.load_certificate()
         self.proxy_cookies = CookieJar(keyring.DOWNLOADS)
-        self.api.http.cookies = self.proxy_cookies.load()
+        self.proxy_credentials = ProxyCredentials(keyring.DOWNLOADS)
+        self.load_proxy_login()
         self.history = None
         self._watchers = 0
         self._mine = {}         # url -> (title, timestamps of older items)
@@ -67,10 +69,14 @@ class Downloads(Router):
     def save(self):
         self.store.save(self.account)
 
+    def load_proxy_login(self):
+        self.api.http.cookies = self.proxy_cookies.load()
+        self.api.http.proxy_auth = self.proxy_credentials.headers()
+
     def reconnect(self):
         """After the address or certificate changed."""
         self.load_certificate()
-        self.api.http.cookies = self.proxy_cookies.load()
+        self.load_proxy_login()
         self.base_url = self.api.base_url = ""
         self.history = None
         if self.configured:
@@ -81,6 +87,7 @@ class Downloads(Router):
         login."""
         settings.download_certificates().delete()
         self.proxy_cookies.save({})
+        keyring.DOWNLOADS.clear(CREDENTIALS)
         self.account = settings.DownloadServer(
             audio_format=self.account.audio_format, source=self.account.source)
         self.save()

@@ -204,10 +204,16 @@ def test_proxy_login_opens_the_login_page(app, demo, monkeypatch):
     conn = connection.Connection(store, watch=False)
     assert conn.api.http.cookies == {origin(demo.url): "s=1"}
     calls = []
-    monkeypatch.setattr(proxy_login, "sign_in", lambda *a: calls.append(a))
+    monkeypatch.setattr(proxy_login, "sign_in", lambda *a, **kw: calls.append((a, kw)))
     window = Window(app, conn)
     conn.emit("proxy-login", demo.url + "/login")
-    assert calls and calls[0][0] is window.nav and calls[0][5] == demo.url + "/login"
+    assert calls and calls[0][0][0] is window.nav
+    assert calls[0][0][5] == demo.url + "/login"
+    # A proxy that wants HTTP Basic auth points to the preferences.
+    toasts = []
+    monkeypatch.setattr(window, "toast", toasts.append)
+    calls[0][1]["on_basic"]()
+    assert "Proxy Login" in toasts[-1]
     window.player.clear()
     window.destroy()
 
@@ -329,4 +335,39 @@ def test_find_and_download_new_music(app, demo, mtls_metube, pki, trust, monkeyp
     assert not dl.configured and not settings.DownloadStore().load().remote_url
     assert not dialog.download_remove.get_visible()
     dialog.close()
+    window.destroy()
+
+
+def test_setup_with_the_proxy_basic_auth(app, demo, monkeypatch):
+    """The setup form asks for the proxy's user name and password when the
+    proxy challenges, and keeps them for later starts."""
+    from phosh_toolkit.http import origin
+    from phosh_toolkit.proxy_login import ProxyCredentials
+
+    from nauta.window import Window
+    monkeypatch.setattr(router.network, "current_ssids", lambda: None)
+    monkeypatch.setattr(connection_form.network, "current_ssids", lambda: None)
+    demo.proxy_basic = "phone:s3cret"
+    conn = connection.Connection(watch=False)
+    window = Window(app, conn)
+    toasts = []
+    monkeypatch.setattr(window, "toast", toasts.append)
+    page = visible(window)
+    page.form.toast = window.toast
+    page.form.remote.set_text(demo.url)
+    page.button.emit("clicked")
+    run_until(lambda: page.button.get_sensitive() and toasts)
+    assert "Proxy Login" in toasts[-1] and page.form.proxy.get_expanded()
+    page.form.proxy_user.set_text("phone")
+    page.form.proxy_password.set_text("s3cret")
+    page.button.emit("clicked")
+    run_until(lambda: isinstance(visible(window), setup.SignInPage))
+    sign_in = visible(window)
+    sign_in.user.set_text("robin")
+    sign_in.password.set_text(PASSWORD)
+    sign_in.button.emit("clicked")
+    run_until(lambda: window.main is not None)
+    assert ProxyCredentials(keyring.KEYRING).get(demo.url) == ("phone", "s3cret")
+    again = connection.Connection(watch=False)
+    assert origin(demo.url) in again.api.http.proxy_auth
     window.destroy()

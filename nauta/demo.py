@@ -5,6 +5,7 @@ TLS against it. Only the endpoints Nauta calls are implemented, with the
 answers shaped like Navidrome's (docs/subsonic-api.md). Covers and audio
 are made here: colour gradients and sine tones. DemoMeTube stands in for
 the download server (docs/downloads.md). No GTK."""
+import base64
 import colorsys
 import hashlib
 import io
@@ -35,6 +36,9 @@ class DemoServer:
         self.artists = {a["id"]: a for a in self.library["artists"]}
         self.requests = []     # (method, path, form) seen
         self.scrobbles = []    # (song id, submission)
+        # "user:password": like Pangolin's header authentication, refuse
+        # requests without this HTTP Basic auth (401 with a challenge).
+        self.proxy_basic = None
         self._audio = {}
         self._covers = {}
         server = self
@@ -219,6 +223,7 @@ class DemoMeTube(DemoServer):
         # "name=value": refuse every request without this cookie, like a
         # reverse proxy with its own login (Pangolin answers 401).
         self.proxy_cookie = None
+        self.proxy_basic = None
         server = self
 
         class Handler(_MeTubeHandler):
@@ -334,7 +339,20 @@ class _Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length") or 0)
         self._handle(self.rfile.read(length))
 
+    def _proxy_refuses(self):
+        """Like Pangolin with header authentication: 401 without the
+        right HTTP Basic auth. The header goes on to the server."""
+        basic = self.owner.proxy_basic
+        if basic and self.headers.get("Authorization") != \
+                "Basic " + base64.b64encode(basic.encode()).decode():
+            self._send(401, b"Unauthorized", "text/plain",
+                       [("WWW-Authenticate", 'Basic realm="pangolin"')])
+            return True
+        return False
+
     def _handle(self, body):
+        if self._proxy_refuses():
+            return
         parts = urlsplit(self.path)
         # Like Navidrome's postFormToQueryParams: query and body together.
         form = dict(parse_qsl(parts.query))
@@ -375,6 +393,8 @@ class _Handler(BaseHTTPRequestHandler):
 
 class _MeTubeHandler(_Handler):
     def _handle(self, raw):
+        if self._proxy_refuses():
+            return
         path = urlsplit(self.path).path.strip("/")
         cookie = self.owner.proxy_cookie
         if cookie and cookie not in (self.headers.get("Cookie") or ""):

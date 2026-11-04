@@ -171,3 +171,26 @@ def test_proxy_streams_without_credentials_in_the_url(mtls_demo, pki, trust, mon
     method, path, form = mtls_demo.requests[-1]
     assert method == "POST" and path == f"/rest/stream?id={song['id']}&maxBitRate=192"
     assert form["t"] == token(PASSWORD, form["s"])
+
+
+def test_proxy_basic_auth_reaches_navidrome(demo, monkeypatch):
+    """The proxy's Basic auth goes along with every call and stream, the
+    Subsonic credentials stay in the body."""
+    from phosh_toolkit.proxy_login import ProxyCredentials
+    demo.proxy_basic = "phone:s3cret"
+    conn = _connection("", demo.url, [], None, monkeypatch)
+    conn.api.user, conn.api.password = "robin", PASSWORD
+    error = _resolve(conn)
+    assert error.kind == "proxy-login" and error.wants_basic
+    ProxyCredentials(keyring.KEYRING).set(demo.url, "phone", "s3cret")
+    conn.load_proxy_login()
+    assert _resolve(conn) is None
+    assert conn.api.artists()
+    song = demo.library["songs"][0]
+    proxy = MediaProxy(conn.forward)
+    try:
+        with urllib.request.urlopen(proxy.url(conn.api.stream_path(song["id"])),
+                                    timeout=10) as response:
+            assert response.status == 200
+    finally:
+        proxy.stop()

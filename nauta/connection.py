@@ -5,7 +5,7 @@ import logging
 
 from gi.repository import GObject
 from phosh_toolkit import tasks, tls
-from phosh_toolkit.proxy_login import CookieJar
+from phosh_toolkit.proxy_login import CookieJar, ProxyCredentials
 from phosh_toolkit.http import NETWORK, HttpError
 from phosh_toolkit.router import CONNECTING, OFFLINE, Router  # noqa: F401
 
@@ -37,9 +37,15 @@ class Connection(Router):
             self.api.user = self.account.user_name
             self.api.password = keyring.lookup(keyring.PASSWORD) or ""
         self.load_certificate()
-        # A reverse proxy's own login (docs/connection.md).
+        # A reverse proxy's own login (docs/connection.md): its session
+        # cookies, or its HTTP Basic user name and password.
         self.proxy_cookies = CookieJar(keyring.KEYRING)
+        self.proxy_credentials = ProxyCredentials(keyring.KEYRING)
+        self.load_proxy_login()
+
+    def load_proxy_login(self):
         self.api.http.cookies = self.proxy_cookies.load()
+        self.api.http.proxy_auth = self.proxy_credentials.headers()
 
     # --- account -----------------------------------------------------
 

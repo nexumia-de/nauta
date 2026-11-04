@@ -163,6 +163,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
             self.form.apply(conn.account)
             conn.save()
             conn.load_certificate()
+            conn.load_proxy_login()
             conn.base_url = conn.api.base_url = ""
             conn.resolve()
             self.toast("Saved")
