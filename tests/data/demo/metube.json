@@ -122,7 +122,7 @@
  },
  "collections": [
   {
-   "url": "https://music.youtube.com/browse/MPREb_demoHarbour01",
+   "url": "https://music.youtube.com/playlist?list=OLAK5uy_demoHarbour01",
    "kind": "albums",
    "title": "Saltwater Letters",
    "subtitle": "Album • Harbour Lights • 2024",
@@ -130,17 +130,20 @@
     "https://music.youtube.com/watch?v=demo0000000",
     "https://music.youtube.com/watch?v=demo0000001",
     "https://music.youtube.com/watch?v=demo0000002"
-   ]
+   ],
+   "browse_id": "MPREb_demoHarbour01"
   },
   {
-   "url": "https://music.youtube.com/browse/MPREb_demoOkafor001",
+   "url": "https://music.youtube.com/playlist?list=OLAK5uy_demoOkafor001",
    "kind": "albums",
    "title": "Glass Orchard",
    "subtitle": "EP • Mira Okafor • 2023",
    "tracks": [
     "https://music.youtube.com/watch?v=demo0000003",
     "https://music.youtube.com/watch?v=demo0000004"
-   ]
+   ],
+   "browse_id": "MPREb_demoOkafor001",
+   "_no_play_button": true
   },
   {
    "url": "https://music.youtube.com/playlist?list=PLdemoCoastal00001",

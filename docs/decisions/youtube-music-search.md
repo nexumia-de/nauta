@@ -52,6 +52,11 @@ links, and waiting for a MeTube change upstream.
 - **This client is separate**: its own HTTP client, so the download
   server's client certificate, proxy cookies and proxy login are never
   sent to YouTube. It sends Nauta's User-Agent.
+- **Albums reach MeTube as their playlist** (`…/playlist?list=OLAK5uy_…`),
+  never as their album page (`…/browse/MPREb_…`), which MeTube's
+  `/browse` can't list ([details](../downloads.md#albums-and-playlists-from-the-phone)).
+  When the search result doesn't name the playlist, the phone reads it
+  from the album page on YouTube Music.
 - **Everything else stays with MeTube**: songs and videos are still
   searched through `/browse`; the songs of an album or playlist are
   listed through `/browse`; downloads go through `/add`.

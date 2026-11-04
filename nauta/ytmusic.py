@@ -8,11 +8,19 @@ only for this list. The songs of an album or playlist are then listed and
 downloaded through MeTube as before.
 
 Request facts from yt-dlp (yt_dlp/extractor/youtube/_base.py, client
-"web_music", and _search.py, YoutubeMusicSearchURLIE._SECTIONS, at
-412e7f0, 2026-11-04). No code from yt-dlp. This client never sends the
+"web_music"; _search.py, YoutubeMusicSearchURLIE._SECTIONS; _tab.py,
+albums resolved through "urlCanonical"; at 412e7f0, 2026-11-04) and
+ytmusicapi (parsers/search.py, an album's playlist id under its play
+button; at 488dbf3, 2026-11-04). No code from either.
+
+Albums must reach MeTube as their playlist (…/playlist?list=OLAK5uy_…):
+for an album page link (…/browse/MPREb_…) yt-dlp only answers "see this
+playlist", which MeTube's /browse doesn't follow (it runs yt-dlp with
+extract_flat) and reports as "a single video". This client never sends the
 download server's certificate, cookies or proxy login: it has its own
 HTTP client. Blocking calls meant for worker threads; no GTK."""
 import json
+from urllib.parse import parse_qs, quote, urlsplit
 
 from gi.repository import GLib
 from phosh_toolkit.http import SERVER, Client, HttpError
@@ -53,13 +61,40 @@ def _text(column):
     return "".join(r.get("text") or "" for r in runs if isinstance(r, dict)).strip()
 
 
+def playlist_link(playlist_id):
+    return f"{BASE_URL}/playlist?list={quote(playlist_id, safe='')}"
+
+
 def collection_url(browse_id):
-    """The URL MeTube gets for a result: an album's browse page
-    (yt-dlp resolves it to the album's playlist) or a playlist."""
+    """The URL of a result: a playlist, or an album page that
+    YouTubeMusic.playlist_url() turns into the album's playlist."""
     if browse_id.startswith("VL"):
-        return f"{BASE_URL}/playlist?list={browse_id[2:]}"
+        return playlist_link(browse_id[2:])
     if browse_id.startswith("MPREb_"):
         return f"{BASE_URL}/browse/{browse_id}"
+    return ""
+
+
+def album_browse_id(url):
+    """"MPREb_…" for an album page link, else ""."""
+    parts = urlsplit(url)
+    if parts.hostname in ("music.youtube.com", "www.youtube.com", "youtube.com") \
+            and parts.path.startswith("/browse/MPREb_"):
+        return parts.path.rsplit("/", 1)[-1]
+    return ""
+
+
+def _album_playlist_id(renderer):
+    """The album's playlist id under the play button of a search result,
+    as ytmusicapi reads it; "" when the answer has none."""
+    play = ((((renderer.get("overlay") or {})
+              .get("musicItemThumbnailOverlayRenderer") or {})
+             .get("content") or {}).get("musicPlayButtonRenderer") or {}) \
+        .get("playNavigationEndpoint") or {}
+    for key in ("watchPlaylistEndpoint", "watchEndpoint"):
+        playlist_id = (play.get(key) or {}).get("playlistId")
+        if isinstance(playlist_id, str) and playlist_id:
+            return playlist_id
     return ""
 
 
@@ -81,6 +116,8 @@ def parse(answer, kind):
                 browse_id = (((renderer.get("navigationEndpoint") or {})
                               .get("browseEndpoint") or {}).get("browseId") or "")
                 url = collection_url(browse_id)
+                if browse_id.startswith("MPREb_") and _album_playlist_id(renderer):
+                    url = playlist_link(_album_playlist_id(renderer))
                 columns = renderer.get("flexColumns") or []
                 title = _text(columns[0]) if columns else ""
                 if not url or not title:
@@ -96,14 +133,14 @@ class YouTubeMusic:
         self.http = http or Client(USER_AGENT)
         self.base_url = base_url or BASE_URL
 
-    def _search(self, query, params, timeout):
+    def _call(self, endpoint, body, timeout):
         body = {
             "context": {"client": {"clientName": CLIENT_NAME,
                                    "clientVersion": CLIENT_VERSION,
                                    "hl": language()}},
-            "query": query, "params": params}
+            **body}
         response = self.http.request(
-            "POST", f"{self.base_url}/youtubei/v1/search?prettyPrint=false",
+            "POST", f"{self.base_url}/youtubei/v1/{endpoint}?prettyPrint=false",
             {"Accept": "application/json",
              "Origin": BASE_URL,
              "X-YouTube-Client-Name": CLIENT_ID,
@@ -113,7 +150,24 @@ class YouTubeMusic:
         try:
             return json.loads(response.body)
         except ValueError:
-            raise HttpError(SERVER, "YouTube Music sent no search results") from None
+            raise HttpError(SERVER, "YouTube Music sent no valid answer") from None
+
+    def _search(self, query, params, timeout):
+        return self._call("search", {"query": query, "params": params}, timeout)
+
+    def playlist_url(self, url, timeout=30):
+        """`url`, or for an album page link the album's playlist, from the
+        page's canonical URL (as yt-dlp resolves albums)."""
+        browse_id = album_browse_id(url)
+        if not browse_id:
+            return url
+        answer = self._call("browse", {"browseId": browse_id}, timeout)
+        canonical = (((answer or {}).get("microformat") or {})
+                     .get("microformatDataRenderer") or {}).get("urlCanonical") or ""
+        playlist_id = (parse_qs(urlsplit(canonical).query).get("list") or [""])[0]
+        if not playlist_id:
+            raise HttpError(SERVER, "YouTube Music didn't say which songs are on this album")
+        return playlist_link(playlist_id)
 
     def search(self, query, kind=ALBUMS, count=RESULTS, timeout=30):
         """Albums or playlists for `query`, at most `count`."""

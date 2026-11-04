@@ -351,6 +351,7 @@ class CollectionPage(Adw.NavigationPage):
             description="This album or playlist is empty or unavailable"),
             "empty")
         self.download_all = None
+        self.url = result["url"]
         view = Adw.ToolbarView(content=self.stack)
         view.add_top_bar(Adw.HeaderBar())
         self.set_child(view)
@@ -370,8 +371,11 @@ class CollectionPage(Adw.NavigationPage):
                 "songs")
             self.stack.set_visible_child_name("songs")
             return
-        name, songs = answer
-        title = self.result.get("title") or name or self.result["url"]
+        url, name, songs = answer
+        # An album page link became the album's playlist: "Download All"
+        # sends that.
+        self.url = url
+        title = self.result.get("title") or name or url
         self.set_title(title)
         if not songs:
             self.stack.set_visible_child_name("empty")
@@ -409,7 +413,7 @@ class CollectionPage(Adw.NavigationPage):
         def started():
             for row in self.rows:
                 mark_downloading(row.download)
-        download(self.window, button, self.result["url"], title, songs,
+        download(self.window, button, self.url, title, songs,
                  label="Downloading", then=started)
 
 

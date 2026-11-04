@@ -456,11 +456,29 @@ def test_find_albums_and_playlists(app, demo, metube, youtube_music, monkeypatch
     run_until(lambda: any("Downloaded “Saltwater Letters”" in t for t in toasts), 20)
     added = [b for m, p, b in metube.requests if p == "add"]
     assert [b["url"] for b in added] == [
-        "https://music.youtube.com/browse/MPREb_demoHarbour01"]
+        "https://music.youtube.com/playlist?list=OLAK5uy_demoHarbour01"]
     assert not collection.download_all.get_sensitive()
     assert all(not r.download.get_sensitive() for r in collection.rows)
     window.nav.pop()
 
+    # An album whose search result has no playlist id: its album page is
+    # resolved on YouTube Music, MeTube only ever gets the playlist.
+    page.search("okafor")
+    run_until(lambda: page.stack.get_visible_child_name() == "results"
+              and _rows(page, "results")[0].get_title() == "Glass Orchard")
+    _rows(page, "results")[0].emit("activated")
+    collection = visible(window)
+    run_until(lambda: collection.stack.get_visible_child_name() == "songs")
+    assert [r.get_title() for r in collection.rows] == ["Glass Orchard", "Slow Satellite"]
+    collection.download_all.emit("clicked")
+    run_until(lambda: any("Downloaded “Glass Orchard”" in t for t in toasts), 20)
+    playlist = "https://music.youtube.com/playlist?list=OLAK5uy_demoOkafor001"
+    assert [b["url"] for m, p, b in metube.requests if p in ("browse", "add")][-2:] == \
+        [playlist, playlist]
+    assert not [b for m, p, b in metube.requests if "MPREb_" in str(b.get("url"))]
+    window.nav.pop()
+
+    page.entry.set_text("harbour")
     page.kind_buttons["playlists"].set_active(True)
     run_until(lambda: page.stack.get_visible_child_name() == "results"
               and _rows(page, "results")[0].get_title() == "Coastal Evenings")
@@ -485,4 +503,10 @@ def test_find_albums_and_playlists(app, demo, metube, youtube_music, monkeypatch
     assert isinstance(collection, find.CollectionPage)
     run_until(lambda: collection.get_title() == "Coastal Evenings")
     assert len(collection.rows) == 6
+    window.nav.pop()
+    page.search("https://music.youtube.com/browse/MPREb_demoHarbour01")
+    collection = visible(window)
+    run_until(lambda: collection.stack.get_visible_child_name() == "songs")
+    assert collection.get_title() == "Saltwater Letters"
+    assert collection.url == "https://music.youtube.com/playlist?list=OLAK5uy_demoHarbour01"
     window.destroy()

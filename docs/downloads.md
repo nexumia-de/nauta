@@ -12,6 +12,12 @@ sources:
   - id: yt-dlp
     resource: https://github.com/yt-dlp/yt-dlp/blob/412e7f0/yt_dlp/extractor/youtube/_search.py
     title: yt-dlp, YoutubeMusicSearchURLIE and YoutubeSearchIE (commit 412e7f0, 2026-11-04)
+  - id: ytmusicapi
+    resource: https://github.com/sigma67/ytmusicapi/blob/488dbf3/ytmusicapi/parsers/search.py
+    title: ytmusicapi, parsers/search.py (album results, playlist id under the play button, "Single", "EP") and navigation.py (commit 488dbf3, 2026-11-04)
+  - id: yt-dlp-flat
+    resource: https://github.com/yt-dlp/yt-dlp/blob/412e7f0/yt_dlp/YoutubeDL.py
+    title: yt-dlp, YoutubeDL.process_ie_result, extract_flat True keeps a "url" result unresolved (commit 412e7f0, 2026-11-04)
   - id: yt-dlp-api
     resource: https://github.com/yt-dlp/yt-dlp/tree/412e7f0/yt_dlp/extractor/youtube
     title: yt-dlp, _base.py (client "web_music", _call_api, generate_api_headers) and _tab.py (_music_reponsive_list_entry, MPREb_ album URLs) (commit 412e7f0, 2026-11-04)
@@ -119,10 +125,18 @@ yt-dlp[^yt-dlp-api]:
 |---|---|
 | Request | `POST https://music.youtube.com/youtubei/v1/search?prettyPrint=false`, JSON `{"context": {"client": {"clientName": "WEB_REMIX", "clientVersion": "1.20260707.12.00", "hl": <system language>}}, "query", "params"}` |
 | Headers | `X-YouTube-Client-Name: 67`, `X-YouTube-Client-Version`, `Origin: https://music.youtube.com`, Nauta's `User-Agent`; no key, no cookies |
-| `params` Albums | `EgWKAQIYAWoKEAoQAxAEEAkQBQ==` |
+| `params` Albums | `EgWKAQIYAWoKEAoQAxAEEAkQBQ==`. Gives albums, singles and EPs, as YouTube Music's own "Albums" filter does: the line under the title starts with "Album", "Single" or "EP"[^ytmusicapi] |
 | `params` Playlists | featured `EgeKAQQoADgBagwQAxAJEAQQDhAKEAU==`, then community `EgeKAQQoAEABagoQChADEAQQCRAF` (two requests, merged) |
 | Answer read | `contents.tabbedSearchResultsRenderer.tabs[0]…sectionListRenderer.contents[].musicShelfRenderer.contents[].musicResponsiveListItemRenderer`: title = text runs of `flexColumns[0]`, the line under it = runs of `flexColumns[1]` ("Album • Artist • 2024"), link = `navigationEndpoint.browseEndpoint.browseId` |
-| Link for MeTube | `MPREb_…` → `https://music.youtube.com/browse/MPREb_…` (yt-dlp resolves it to the album's playlist); `VL<id>` → `https://music.youtube.com/playlist?list=<id>` |
+| Link for MeTube | Album: its playlist `https://music.youtube.com/playlist?list=OLAK5uy_…`, from the play button (`overlay.musicItemThumbnailOverlayRenderer.content.musicPlayButtonRenderer.playNavigationEndpoint.watchPlaylistEndpoint.playlistId`, or `watchEndpoint.playlistId`)[^ytmusicapi]. Playlist: `VL<id>` → `https://music.youtube.com/playlist?list=<id>` |
+| Album without a play button, or a pasted album page link | `POST /youtubei/v1/browse` `{"browseId": "MPREb_…"}` → `microformat.microformatDataRenderer.urlCanonical`, the album's playlist, as yt-dlp resolves albums[^yt-dlp-api] |
+
+**MeTube never gets an album page link (`…/browse/MPREb_…`).** yt-dlp
+answers such a link only with a pointer to the album's playlist. MeTube's
+`/browse` runs yt-dlp with `extract_flat: True`, which leaves that pointer
+unfollowed[^yt-dlp-flat]. So MeTube answers "This URL points to a single
+video, not a channel or playlist" (found by the owner on the phone;
+`/add` would follow it). The stand-in `DemoMeTube` answers the same.
 
 This client has its own HTTP connection: none of the download
 server's certificate, cookies or proxy login go to YouTube. The answer's
@@ -217,7 +231,11 @@ the YouTube Music stand-in `nauta.demo.DemoYouTubeMusic`. Covered:
 - a playlist with one failing song reported as "1 of 6 songs failed"
 - a song in both an album and a playlist
 - a single song from a playlist
-- a pasted playlist link
+- a pasted playlist link, and a pasted album page link resolved to its
+  playlist
+- an album result with and without a playlist id under its play button;
+  MeTube never gets an album page link, which it answers with "single
+  video", like the real MeTube
 - add with the chosen format, finished and failed downloads reported, a
   repeated download not mistaken for the old one
 - the strict route at home and away, mutual TLS with an
@@ -226,7 +244,30 @@ the YouTube Music stand-in `nauta.demo.DemoYouTubeMusic`. Covered:
 
 Screenshots at 360×720 and 1000×700.
 
-Not yet checked against a real MeTube or the real YouTube Music:
+Live against YouTube Music from the cloud container (2026-11-04,
+`hl: en`):
+
+- **Community playlists**: answer and parser as described; 20 results
+  for "radiohead", links `…/playlist?list=PL…`. Some playlist ids are
+  short (`PLVMrHurpp3EY`); that is what YouTube sends.
+- Repeated searches (12 in a row) were answered. One single `403` came
+  earlier and did not come back; Nauta shows it as "Can't Search" with
+  Try Again.
+- Songs, albums and featured playlists: "No results". YouTube Music
+  doesn't serve its licensed catalogue to the cloud container
+  ([dev environment](dev-environment.md)). Album search, the play
+  button's playlist id and album page resolution stay unchecked here.
+  On the owner's phone album search answered, and opening an album
+  showed the "single video" bug fixed above.
+- **Plain YouTube for albums**: a playlist search on `www.youtube.com`
+  (client `WEB`, `sp=EgIQAw==`) for "radiohead ok computer" gave 20
+  playlists made by users: "[HD]", lyrics, "432hz" or instrumental
+  uploads, B-sides, bootlegs. None were official album playlists
+  (`OLAK5uy_…`). YouTube Music's album results (official audio, album
+  tags) stay the better source for albums.
+
+Not yet checked against a real MeTube or the real YouTube Music from a
+phone:
 `music.youtube.com`, `www.youtube.com` and a running MeTube are not
 available in the cloud container. So it is unchecked whether yt-dlp's
 YouTube Music song search still returns songs today, and whether the
