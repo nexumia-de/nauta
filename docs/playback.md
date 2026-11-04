@@ -45,14 +45,49 @@ played, or at its end.
   (tap a song to jump). It is a normal page: swipe back closes it.
 - Playback errors show as a toast ("Can't play this song: …").
 
+# With the window closed (`window.py`)
+
+- Closing the window while a song is loaded (playing or paused) only
+  hides it; the application is held (`Gio.Application.hold`), so music
+  goes on. Opening Nauta again shows the same window. When nothing is
+  left to play (stopped, last song ended, error) a hidden Nauta quits.
+  "Quit" in the main menu (Ctrl+Q) and the media controls' Quit end both.
+- While music plays, suspend is inhibited (`Gtk.Application.inhibit`
+  with `SUSPEND`, released on pause), so Phosh does not suspend the
+  phone with the screen off. Without a session manager the call returns
+  0 and nothing is inhibited.
+- Not yet checked on the phone (nexumia-de/nauta#4).
+
+# Media controls (`mpris.py`)
+
+MPRIS 2 on the session bus as `org.mpris.MediaPlayer2.Nauta`
+(`….Nauta.Devel` for the nightly app; the manifest has `--own-name` for
+both): Phosh's lock screen and quick settings show title, artist, album,
+length and cover, with play/pause, previous, next and seeking.
+
+- Root: `Raise` (shows the window), `Quit`, `Identity` "Nauta",
+  `DesktopEntry` the app id; no track list.
+- Player: `PlaybackStatus` (Playing / Paused / Stopped), `Metadata`
+  (`mpris:trackid` an object path made from the song id, `mpris:length`,
+  `xesam:title`, `xesam:artist`, `xesam:album`, `xesam:trackNumber`,
+  `mpris:artUrl`), `Position`, `CanGoNext`/`Previous`/`Play`/`Pause`/
+  `Seek`; `Seek` past the end goes to the next song; `Seeked` after
+  seeks; `PropertiesChanged` when a watched property changes.
+- The cover is a `file://` URI of the cached cover (300 px), never a
+  server URL: those would need credentials.
+- Not yet checked on the phone's lock screen (nexumia-de/nauta#5).
+
 # Not yet
 
-Background playback with the screen off and MPRIS controls (M1),
-gapless playback and a queue kept across restarts (M2).
+Gapless playback and a queue kept across restarts (M2).
 
 # Verified (2026-11-04, cloud container, GStreamer 1.24)
 
 `tests/test_player.py`: WAV tones from the demo server through the
 proxy with real GStreamer: play, pause, seek, next at the end, scrobbles,
 restart vs. previous, shuffle keeps the tapped song first, a missing song
-reports an error.
+reports an error. `tests/test_mpris.py`: the interface on a private
+dbus-daemon, driven like a lock screen (properties, change signals,
+PlayPause, Play, Seek, Next, Raise, Quit, cover as a local file).
+`tests/test_ui.py`: closing the window while playing hides it, holds
+the app and inhibits suspend; pausing keeps it; stopping quits.

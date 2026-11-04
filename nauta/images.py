@@ -10,6 +10,10 @@ class Covers:
         self.connection = connection
         self._cache = ImageCache(settings.cache_dir() / "covers", connection.call)
 
+    def path(self, cover_id, size):
+        """Where the cover's file is once loaded (for MPRIS)."""
+        return self._cache.directory / f"{cover_id}-{size}"
+
     def load(self, cover_id, size, done):
         """done(texture or None) on the main loop. `size` in logical
         pixels; the server scales to twice that for HiDPI screens."""

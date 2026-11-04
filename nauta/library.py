@@ -189,6 +189,8 @@ class MainPage(Adw.NavigationPage):
         menu = Gio.Menu()
         menu.append("Preferences", "app.preferences")
         menu.append("About Nauta", "app.about")
+        # Closing the window keeps the music playing; this ends both.
+        menu.append("Quit", "app.quit")
         header.pack_end(Gtk.MenuButton(icon_name="open-menu-symbolic",
                                        menu_model=menu, tooltip_text="Main Menu",
                                        primary=True))

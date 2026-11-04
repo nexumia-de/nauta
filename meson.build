@@ -22,6 +22,7 @@ python.install_sources(
   'nauta/keyring.py',
   'nauta/library.py',
   'nauta/main.py',
+  'nauta/mpris.py',
   'nauta/nowplaying.py',
   'nauta/pages.py',
   'nauta/player.py',
