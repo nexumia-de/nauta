@@ -76,15 +76,20 @@ them, streams too
 - Works for Navidrome because the Subsonic credentials are in the body:
   Pangolin passes the `Authorization` header on, and Navidrome's
   Subsonic API does not read it (`server/subsonic`, commit `7c1e68a`).
-- With "extended compatibility" on, Pangolin answers a missing or wrong
-  header with a Basic challenge: setup expands "Proxy Login" and marks
-  it; later the window says to check it in Preferences → Connection.
-  Without it, the login page appears as before.
-- Owner's side in Pangolin, per resource (Navidrome, MeTube): set header
-  authentication with a user name and password made for the phone only
-  (random, from the password manager) and turn on extended
-  compatibility. On a lost phone: change them and block its client
-  certificate.
+- Only with Platform SSO **off** and "extended compatibility" on does
+  Pangolin answer a missing or wrong header with a Basic challenge; then
+  setup expands "Proxy Login" and marks it, and later the window says to
+  check it in Preferences → Connection. With SSO on (the owner's setup)
+  Pangolin redirects to its login page instead (code read at `9af8dad`,
+  `verifySession`): the web view appears, and "Proxy Login" is opened by
+  hand. Browsers keep their SSO login either way.
+- Owner's side in Pangolin: in the resource policy of Navidrome and
+  MeTube, turn on "Basic header authentication" with a user name and
+  password made for the phone only (random, from the password manager);
+  keep Platform SSO and mTLS on. A policy's header auth counts for all
+  its resources; separate pairs per resource need separate policies. In
+  Nauta, open "Proxy Login" in the connection form and enter the pair.
+  On a lost phone: change it and block the phone's client certificate.
 
 # Sign-in and the password
 
