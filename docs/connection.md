@@ -44,6 +44,24 @@ must answer as an OpenSubsonic server with the `formPost` extension,
 or setup stops with "Nauta needs an OpenSubsonic server such as
 Navidrome".
 
+# Proxy login
+
+Some reverse proxies have their own login in front of Navidrome
+(Pangolin's resource authentication, Authelia, Authentik, …). The owner's
+proxy sets it for all resources: mutual TLS worked, then the proxy
+answered `401 Unauthorized` (2026-11-04). The toolkit detects this and
+shows the proxy's login page in a web view
+([proxy login](../../phosh-toolkit/docs/shared-connection.md#proxy-login-proxy_login)):
+
+- during setup, from the connection form;
+- later, when the proxy's session runs out: the router's `proxy-login`
+  signal opens the page from the window (`Window._on_proxy_login`), and
+  the app is not signed out of Navidrome.
+
+The proxy's cookies are kept in the keyring (kind `proxy-cookies`) and
+loaded by `Connection`; they go only to the server's address, also for
+playback through the media proxy.
+
 # Sign-in and the password
 
 - Setup checks the addresses and the certificate (toolkit form), then

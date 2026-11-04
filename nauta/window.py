@@ -1,7 +1,9 @@
 from gi.repository import Adw, GLib, Gtk
+from phosh_toolkit import proxy_login
 from phosh_toolkit.proxy import MediaProxy
 
 from nauta import NAME
+from nauta import connection as connection_module
 from nauta.images import Covers
 from nauta.library import MainPage
 from nauta.nowplaying import NowPlayingPage, PlayerBar
@@ -42,6 +44,7 @@ class Window(Adw.ApplicationWindow):
         self._wide = True
 
         connection.connect("signed-out", self._on_signed_out)
+        connection.connect("proxy-login", self._on_proxy_login)
         self.connect("close-request", self._on_close)
         if connection.signed_in:
             self.show_library()
@@ -104,6 +107,14 @@ class Window(Adw.ApplicationWindow):
         self.bar.set_reveal_child(self.player.song is not None
                                   and self.main is not None
                                   and not self.now_playing_shown())
+
+    def _on_proxy_login(self, connection, url):
+        """The reverse proxy in front of the server wants its own login
+        (again): show its page (docs/connection.md)."""
+        if connection.signed_in:
+            proxy_login.sign_in(self.nav, connection, connection.api.http,
+                                connection.proxy_cookies,
+                                connection_module.probe_through, url)
 
     def _on_signed_out(self, *_):
         self.player.clear()
