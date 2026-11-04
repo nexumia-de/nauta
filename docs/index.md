@@ -24,7 +24,7 @@ Change history is in [log.md](log.md).
 
 # Development
 
-* [Bundled dependencies](dependencies.md) - Only phosh-toolkit's shared package; everything else comes from the GNOME runtime.
+* [Bundled dependencies](dependencies.md) - phosh-toolkit's shared package and the Noto Sans CJK font (the runtime has no CJK font); everything else comes from the GNOME runtime.
 * [Release channels](release-channels.md) - Stable from tags, nightly from main, releases and store screenshots from the demo library.
 * [Development environment](dev-environment.md) - Blocked hosts, host packages, how to run, test, screenshot and build.
 
