@@ -44,6 +44,17 @@ must answer as an OpenSubsonic server with the `formPost` extension,
 or setup stops with "Nauta needs an OpenSubsonic server such as
 Navidrome".
 
+# Switching while the app runs
+
+When the network changes, the route is chosen again: GLib's network
+monitor and NetworkManager's own signals both trigger it, a change
+during a running search searches again, and a song that is playing
+moves to the new address (the window calls `proxy.follow(connection)`;
+GStreamer reconnects with a `Range`). Before
+nexumia-de/phosh-toolkit#34 Nauta could stay on the local address after
+leaving the home Wi-Fi (owner's report, 2026-11-04). Details:
+[toolkit](../../phosh-toolkit/docs/shared-connection.md#route-route-router).
+
 # Proxy login
 
 Some reverse proxies have their own login in front of Navidrome

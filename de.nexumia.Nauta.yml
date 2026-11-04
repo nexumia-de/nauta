@@ -36,9 +36,9 @@ modules:
     sources:
       - type: git
         url: https://github.com/nexumia-de/phosh-toolkit.git
-        # nexumia-de/phosh-toolkit#31 (HTTP Basic auth at the proxy);
+        # nexumia-de/phosh-toolkit#34 (switching the route while running);
         # replaced by the next toolkit tag.
-        commit: c7680016db74e5ba25dedcceaf9ab74b2b97a00c
+        commit: 7d29bea33ecfedba694204b420f8cdccd49de5e8
         x-checker-data:
           type: git
           tag-pattern: ^v([\d.]+)$

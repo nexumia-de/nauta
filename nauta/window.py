@@ -31,6 +31,9 @@ class Window(Adw.ApplicationWindow):
             watch=connection.watcher is not None)
         self.covers = Covers(connection)
         self.proxy = MediaProxy(connection.forward)
+        # A song playing when the route changes (Wi-Fi gone) moves to the
+        # new address (phosh-toolkit docs/shared-connection.md).
+        self.proxy.follow(connection)
         self.player = Player(connection, self.proxy)
         self.player.connect("error", lambda p, message: self.toast(
             f"Can't play this song: {message}"))
