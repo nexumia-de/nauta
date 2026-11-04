@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Nauta
+Comment=Listen to your Navidrome library
+Exec=nauta
+Icon=de.nexumia.Nauta
+Terminal=false
+Categories=GTK;AudioVideo;Audio;Player;
+Keywords=navidrome;subsonic;opensubsonic;music;songs;albums;artists;playlists;stream;
+StartupNotify=true
+X-Purism-FormFactor=Workstation;Mobile;

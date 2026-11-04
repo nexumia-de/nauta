@@ -1,0 +1,27 @@
+# Release automation: changelog fragments, release pull request and
+# screenshots (phosh-toolkit docs/releases.md, docs/release-channels.md).
+metainfo = "data/de.nexumia.Nauta.metainfo.xml"
+version-files = ["meson.build", "nauta/__init__.py"]
+
+# Taken by CI from the built Flatpak at 360×720 and 1000×700, light and
+# dark, signed in to the recorded demo library in tests/data/demo, which
+# the app serves itself (NAUTA_DEMO, docs/release-channels.md). Covers
+# and sound are made by the demo server. No network is used.
+[screenshots]
+env = { NAUTA_DEMO = "{root}/tests/data/demo", TZ = "Europe/Berlin" }
+expose = ["{root}/tests/data/demo"]
+delay = 4
+
+[[screenshots.shot]]
+name = "albums"
+caption = "The newest albums of the library"
+
+[[screenshots.shot]]
+name = "album"
+caption = "An album"
+actions = ["app.show-album('al-195308cfb6d233b94d9b')"]
+
+[[screenshots.shot]]
+name = "now-playing"
+caption = "Now playing, with the queue"
+actions = ["app.play-album('al-195308cfb6d233b94d9b')"]

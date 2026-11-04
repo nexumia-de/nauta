@@ -1,0 +1,37 @@
+/* Nauta's look on top of stock libadwaita (docs/design.md). Colours only
+   through libadwaita's variables; the accent is Nauta's sea teal. */
+
+/* libadwaita 1.5 (host previews) reads named colours. */
+@define-color accent_bg_color #127a8a;
+@define-color accent_fg_color #ffffff;
+@define-color accent_color #127a8a;
+
+/* libadwaita 1.6+ derives the accent text colour from these. */
+:root {
+  --accent-bg-color: #127a8a;
+  --accent-fg-color: #ffffff;
+}
+
+/* Covers: rounded, with a faint tile until the image is there. */
+.nauta-cover {
+  border-radius: 8px;
+  background-color: alpha(currentColor, 0.08);
+}
+
+/* Room around the album grid's cards (the grid itself has margins). */
+.nauta-grid > child {
+  padding: 6px;
+  border-radius: 12px;
+}
+
+/* The player bar's progress line along its top edge. */
+.nauta-bar-progress trough,
+.nauta-bar-progress progress {
+  min-height: 2px;
+}
+
+/* The big play button on Now Playing. */
+.nauta-play {
+  min-width: 64px;
+  min-height: 64px;
+}

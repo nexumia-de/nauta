@@ -1,0 +1,21 @@
+name: Feature request
+description: Suggest something Nauta should do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What do you want to do
+      description: The situation and what is missing today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Idea
+      description: How Nauta could help. Screenshots of other apps are welcome.
+  - type: markdown
+    attributes:
+      value: |
+        The maintainer adds the milestone and the `area:` label; see the
+        [roadmap](https://github.com/nexumia-de/nauta/blob/main/docs/roadmap.md).

@@ -1,0 +1,50 @@
+id: de.nexumia.Nauta
+runtime: org.gnome.Platform
+runtime-version: '51'
+sdk: org.gnome.Sdk
+command: nauta
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  # Music.
+  - --socket=pulseaudio
+  # The Navidrome server, local and remote.
+  - --share=network
+  # The Wi-Fi name, to use the local address at home (docs/connection.md).
+  - --system-talk-name=org.freedesktop.NetworkManager
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - '*.a'
+  - '*.la'
+# Everything else Nauta needs is in the GNOME runtime (GTK, libadwaita,
+# libsoup 3, libsecret, GStreamer). Inventory: docs/dependencies.md.
+modules:
+  # Shared connection and playback code (phosh-toolkit
+  # docs/shared-connection.md), next to Nauta's package in site-packages.
+  - name: phosh-toolkit
+    buildsystem: simple
+    build-commands:
+      - install -Dm644 -t "$(python3 -c 'import sysconfig; print(sysconfig.get_path("purelib", vars={"base":"/app"}))')/phosh_toolkit" lib/phosh_toolkit/*.py
+      - install -Dm644 -t /app/share/licenses/$FLATPAK_ID/phosh-toolkit LICENSE
+    sources:
+      - type: git
+        url: https://github.com/nexumia-de/phosh-toolkit.git
+        # The toolkit pull request that adds the package; replaced by the
+        # tag v0.1.0 and its commit once that exists.
+        commit: 170bca9e11ae4c7029e76087485299dfbae76c6b
+        x-checker-data:
+          type: git
+          tag-pattern: ^v([\d.]+)$
+  - name: nauta
+    buildsystem: meson
+    sources:
+      - type: dir
+        path: .
+        skip:
+          - build-dir
+          - repo
+          - tests
+          - .phosh-toolkit
