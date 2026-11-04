@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-11-04
+* **Update**: The Flatpak module `phosh-toolkit` is pinned to the toolkit tag `v0.2.0` (commit `9391db4`, with the proxy login) instead of the pull request's commit ([dependencies](dependencies.md)).
 * **Update**: [Playback](playback.md): music goes on with the window closed (the app is held while a song is loaded, suspend inhibited while playing, "Quit" in the menu) and Phosh's lock screen shows media controls through MPRIS (`mpris.py`, `--own-name=org.mpris.MediaPlayer2.Nauta`). Tested with a private dbus-daemon and real GStreamer; not yet on the phone (#4, #5).
 * **Update**: [Connection](connection.md#proxy-login): a reverse proxy's own login (SSO) in front of Navidrome opens its login page in the app, during setup and when its session runs out, instead of failing with "invalid answer" or signing out; cookies in the keyring. Uses nexumia-de/phosh-toolkit#29 (pinned to its commit until the next toolkit tag).
 * **Update**: The Flatpak module `phosh-toolkit` is pinned to the toolkit tag `v0.1.0` (commit `f018688`) instead of the pull request's commit ([dependencies](dependencies.md)).
