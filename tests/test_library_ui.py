@@ -16,7 +16,7 @@ import gi  # noqa: E402
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk  # noqa: E402
+from gi.repository import GLib, Gtk  # noqa: E402
 from phosh_toolkit import router  # noqa: E402
 
 from nauta import connection, keyring, settings  # noqa: E402
@@ -86,6 +86,11 @@ def window(app, demo, monkeypatch):
     monkeypatch.setattr(win, "toast", win.toasts_seen.append)
     win.present()
     run_until(lambda: win.favourites.loaded, 10)
+    # Let the first albums and their covers load before the test starts.
+    albums = win.main.views["albums"]
+    run_until(lambda: albums.get_visible_child_name() == "content", 10)
+    settle = GLib.get_monotonic_time() + 500_000
+    run_until(lambda: GLib.get_monotonic_time() > settle, 5)
     yield win
     win.player.clear()
     win.sleep_timer.cancel()
