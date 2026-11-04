@@ -31,9 +31,19 @@ def run_until(predicate, timeout=10):
     try:
         _run_until(predicate, timeout)
     except TimeoutError:
-        import faulthandler
+        import gc
         import sys
-        faulthandler.dump_traceback(sys.stderr, all_threads=True)
+
+        from gi.repository import GLib
+        from phosh_toolkit.media import Media
+        context = GLib.MainContext.default()
+        busy = sum(bool(context.pending()) for _ in range(200)
+                   if context.iteration(False) or True)
+        alive = [m for m in gc.get_objects() if isinstance(m, Media)
+                 and m.pipeline is not None]
+        print(f"main context pending in {busy}/200 iterations; "
+              f"pipelines alive: {[(m.pipeline.get_state(0)[1].value_nick, m.playing) for m in alive]}; "
+              f"predicate after: {predicate()}", file=sys.stderr)
         raise
 
 ALBUM = "al-195308cfb6d233b94d9b"       # Low Tide, liked in the demo
