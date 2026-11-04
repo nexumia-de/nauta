@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>de.nexumia.Nauta</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0-or-later</project_license>
+  <name>Nauta</name>
+  <summary>Listen to your Navidrome library</summary>
+  <description>
+    <p>
+      Nauta plays the music of your own Navidrome server, or another
+      OpenSubsonic server, on a Phosh phone and on the desktop.
+    </p>
+    <ul>
+      <li>Browse albums, artists and playlists, and search the library</li>
+      <li>Play an album, a playlist or a search result, in order or shuffled</li>
+      <li>At home it talks to the server directly, elsewhere through its public address</li>
+      <li>Works with servers that require a client certificate</li>
+      <li>Separate streaming quality at home and away</li>
+    </ul>
+    <p>
+      Nauta is an independent project and not affiliated with the
+      Navidrome project.
+    </p>
+  </description>
+  <developer id="de.nexumia">
+    <name>suitably</name>
+  </developer>
+  <url type="homepage">https://github.com/nexumia-de/nauta</url>
+  <url type="bugtracker">https://github.com/nexumia-de/nauta/issues</url>
+  <url type="vcs-browser">https://github.com/nexumia-de/nauta</url>
+  <url type="donation">https://liberapay.com/suitably</url>
+  <launchable type="desktop-id">de.nexumia.Nauta.desktop</launchable>
+  <content_rating type="oars-1.1"/>
+  <branding>
+    <color type="primary" scheme_preference="light">#9fdde6</color>
+    <color type="primary" scheme_preference="dark">#0d4f59</color>
+  </branding>
+  <categories>
+    <category>AudioVideo</category>
+    <category>Audio</category>
+  </categories>
+  <recommends>
+    <display_length compare="ge">360</display_length>
+  </recommends>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+    <internet>always</internet>
+  </supports>
+  <releases>
+    <release version="0.1.0" date="2026-11-04">
+      <description>
+        <p>First version: sign in to a Navidrome server, browse albums, artists and playlists, search and play music.</p>
+      </description>
+    </release>
+  </releases>
+</component>
