@@ -244,7 +244,30 @@ the YouTube Music stand-in `nauta.demo.DemoYouTubeMusic`. Covered:
 
 Screenshots at 360×720 and 1000×700.
 
-Not yet checked against a real MeTube or the real YouTube Music:
+Live against YouTube Music from the cloud container (2026-11-04,
+`hl: en`):
+
+- **Community playlists**: answer and parser as described; 20 results
+  for "radiohead", links `…/playlist?list=PL…`. Some playlist ids are
+  short (`PLVMrHurpp3EY`); that is what YouTube sends.
+- Repeated searches (12 in a row) were answered. One single `403` came
+  earlier and did not come back; Nauta shows it as "Can't Search" with
+  Try Again.
+- Songs, albums and featured playlists: "No results". YouTube Music
+  doesn't serve its licensed catalogue to the cloud container
+  ([dev environment](dev-environment.md)). Album search, the play
+  button's playlist id and album page resolution stay unchecked here.
+  On the owner's phone album search answered, and opening an album
+  showed the "single video" bug fixed above.
+- **Plain YouTube for albums**: a playlist search on `www.youtube.com`
+  (client `WEB`, `sp=EgIQAw==`) for "radiohead ok computer" gave 20
+  playlists made by users: "[HD]", lyrics, "432hz" or instrumental
+  uploads, B-sides, bootlegs. None were official album playlists
+  (`OLAK5uy_…`). YouTube Music's album results (official audio, album
+  tags) stay the better source for albums.
+
+Not yet checked against a real MeTube or the real YouTube Music from a
+phone:
 `music.youtube.com`, `www.youtube.com` and a running MeTube are not
 available in the cloud container. So it is unchecked whether yt-dlp's
 YouTube Music song search still returns songs today, and whether the

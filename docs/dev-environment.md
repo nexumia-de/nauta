@@ -16,8 +16,14 @@ Unreachable from the cloud environment on 2026-11-04 (proxy `403`):
 | `opensubsonic.netlify.app` | OpenSubsonic API specification |
 | `demo.navidrome.org` | Navidrome's public demo server, to check the client against a real server |
 | `www.subsonic.org` | Original Subsonic API reference |
-| `music.youtube.com` | YouTube Music's search API, to check album and playlist search against the live service ([finding new music](downloads.md)) |
-| `www.youtube.com` | YouTube, to check what yt-dlp and MeTube get from it |
+
+`music.youtube.com` and `www.youtube.com` were allowed by the owner on
+2026-11-04 and answer. But YouTube Music **does not serve its licensed
+catalogue to the cloud container**. Song and album searches answer "No
+results", even with `gl: DE` and a visitor id. Album pages come back
+empty, and an artist page lists no albums. Only videos, artists,
+podcasts, profiles and community playlists come through. So album search
+and album resolution can only be checked on the phone (#22).
 
 Workaround used: Navidrome's source is cloned with git
 (`github.com/navidrome/navidrome`), which works. `dl.flathub.org`
