@@ -18,6 +18,10 @@ finish-args:
   # docs/playback.md); the nightly app uses its own name.
   - --own-name=org.mpris.MediaPlayer2.Nauta
   - --own-name=org.mpris.MediaPlayer2.Nauta.Devel
+  # The notification shown while playing in the background: swiping it
+  # away quits, which the notification portal does not report
+  # (docs/playback.md).
+  - --talk-name=org.freedesktop.Notifications
 cleanup:
   - /include
   - /lib/pkgconfig

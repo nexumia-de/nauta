@@ -38,6 +38,9 @@ class Account:
     replay_gain: str = "track"
     # Order of the Albums view (nauta.library.SORTS).
     album_sort: str = "newest"
+    # Closing the window while a song is loaded keeps the music going
+    # (docs/playback.md); off: closing quits.
+    play_in_background: bool = True
 
     @property
     def signed_in(self):

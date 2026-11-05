@@ -63,6 +63,15 @@ class Window(Adw.ApplicationWindow):
                                self.quit_app)
         except GLib.Error as e:
             log.info("no media controls: %s", e.message)
+        # While hidden: the notification that quits when swiped away.
+        self.notice = None
+        try:
+            from nauta.background import BackgroundNotice
+            self.notice = BackgroundNotice(lambda: self.present(),
+                                           lambda: self.quit_app())
+        except GLib.Error as e:
+            log.info("no background notification: %s", e.message)
+        self.connect("notify::visible", self._on_visible)
         self.connect("destroy", self._on_destroy)
         self.main = None
         self.nav = Adw.NavigationView()
@@ -219,16 +228,26 @@ class Window(Adw.ApplicationWindow):
         self.show_setup()
 
     def _on_close(self, *_):
-        if self.player.media is not None:
-            # Playing or paused: hide and keep the app; the media controls
-            # and opening Nauta again bring the window back.
-            self.set_visible(False)
+        if self.player.media is not None and \
+                self.connection.account.play_in_background:
+            # Playing or paused: hide and keep the app; the media controls,
+            # the notification and opening Nauta again bring the window
+            # back. Swiping the notification away quits.
             if not self._held:
                 self.get_application().hold()
                 self._held = True
+            self.set_visible(False)
             return True
         self._shut_down()
         return False
+
+    def _on_visible(self, *_):
+        if self.notice is None:
+            return
+        if self.get_visible():
+            self.notice.withdraw()
+        elif self._held:
+            self.notice.show()
 
     def _on_player_state(self, player):
         app = self.get_application()
@@ -243,9 +262,15 @@ class Window(Adw.ApplicationWindow):
             self.quit_app()
 
     def _on_destroy(self, *_):
+        self._close_controls()
+
+    def _close_controls(self):
         if self.mpris is not None:
             self.mpris.close()
             self.mpris = None
+        if self.notice is not None:
+            self.notice.close()
+            self.notice = None
 
     def quit_app(self):
         """Stop playing and quit (menu, media controls)."""
@@ -271,8 +296,6 @@ class Window(Adw.ApplicationWindow):
             self.queue_memory.close()
             self.queue_memory = None
         self.sleep_timer.close()
-        if self.mpris is not None:
-            self.mpris.close()
-            self.mpris = None
+        self._close_controls()
         self.player.clear()
         self.proxy.stop()

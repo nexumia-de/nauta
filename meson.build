@@ -18,6 +18,7 @@ python.install_sources(
   'nauta/actions.py',
   'nauta/api.py',
   'nauta/artist.py',
+  'nauta/background.py',
   'nauta/connection.py',
   'nauta/demo.py',
   'nauta/demo_metube.py',

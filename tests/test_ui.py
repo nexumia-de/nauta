@@ -141,6 +141,9 @@ def test_setup_sign_in_browse_and_play(app, mtls_demo, pki, trust, monkeypatch):
     dialog.style_row.set_selected(0)
     dialog.quality_rows["quality_away"].set_selected(3)
     assert settings.Store().load().quality_away == 128
+    assert dialog.background_row.get_active()
+    dialog.background_row.set_active(False)
+    assert settings.Store().load().play_in_background is False
     dialog.close()
     window.player.clear()
     window.destroy()
@@ -214,6 +217,12 @@ def test_music_goes_on_with_the_window_closed(app, demo, monkeypatch):
     # Closing hides the window and holds the app; the music plays on.
     assert window.emit("close-request") is True
     assert not window.get_visible() and window._held and window.player.playing
+    # The notification that quits when swiped away (tests/test_background.py),
+    # withdrawn when the window is back.
+    assert window.notice is None or window.notice.shown
+    window.present()
+    assert window.notice is None or not window.notice.shown
+    assert window.emit("close-request") is True
     window.player.toggle()
     run_until(lambda: not window._inhibiting, 5)
     assert not quits                       # paused: still there
@@ -222,6 +231,27 @@ def test_music_goes_on_with_the_window_closed(app, demo, monkeypatch):
     window._held = False
     app.release()
     window.player.clear()
+    window.destroy()
+
+
+def test_closing_quits_without_play_in_background(app, demo, monkeypatch):
+    from nauta.window import Window
+    monkeypatch.setattr(router.network, "current_ssids", lambda: None)
+    store = settings.Store()
+    account = store.load()
+    account.remote_url, account.user_name = demo.url, "robin"
+    account.play_in_background = False
+    store.save(account)
+    keyring.store(keyring.PASSWORD, PASSWORD)
+    conn = connection.Connection(store, watch=False)
+    window = Window(app, conn)
+    window.present()
+    album = demo.library["albums"][0]["id"]
+    window.player.play([s for s in demo.library["songs"] if s["albumId"] == album])
+    run_until(lambda: window.player.playing, 15)
+    # Not held: the window closes and the music stops.
+    assert window.emit("close-request") is False
+    assert not window._held and window.player.media is None
     window.destroy()
 
 

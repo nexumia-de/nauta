@@ -46,6 +46,13 @@ class PreferencesDialog(Adw.PreferencesDialog):
                                        if account.replay_gain in modes else 0)
         self.loudness_row.connect("notify::selected", self._on_loudness, modes)
         playback.add(self.loudness_row)
+        self.background_row = Adw.SwitchRow(
+            title="Play in Background",
+            subtitle="Music goes on when the window is closed. Swipe away "
+                     "the notification to quit.",
+            active=account.play_in_background)
+        self.background_row.connect("notify::active", self._on_background)
+        playback.add(self.background_row)
         general.add(playback)
         self.add(general)
 
@@ -81,6 +88,10 @@ class PreferencesDialog(Adw.PreferencesDialog):
     def _on_loudness(self, row, pspec, modes):
         account = self.window.connection.account
         account.replay_gain = modes[row.get_selected()]
+        self.window.connection.save()
+
+    def _on_background(self, row, pspec):
+        self.window.connection.account.play_in_background = row.get_active()
         self.window.connection.save()
 
     def _downloads_page(self):
