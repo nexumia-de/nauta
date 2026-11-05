@@ -1,5 +1,8 @@
 # Directory Update Log
 
+## 2026-11-05
+* **Update**: [Playback](playback.md#with-the-window-closed-windowpy), at the owner's request: while Nauta plays with its window closed it shows a notification; swiping it away, "Clear all" or its Quit button quit Nauta, tapping opens the window (`background.py`, manifest `--talk-name=org.freedesktop.Notifications`). Phosh's media widget can't be dismissed (read from Phosh's source at `6886a53`). New setting Play in Background (Preferences → Playback, on by default); off, closing the window quits. Tested against a stand-in notification server on a private dbus-daemon; not yet in Phosh on the phone.
+
 ## 2026-11-04
 * **Update**: The Flatpak module `phosh-toolkit` is pinned to the toolkit tag `v0.3.0` (commit `c29a2a1`) instead of the commit `7d29bea` ([dependencies](dependencies.md)). Its `Media.stop()` releases the pipeline on the main thread; with the old pin a stopped pipeline could be freed on another thread, which crashed the tests in CI (segmentation fault while stopping a song).
 * **Update**: [Development environment](dev-environment.md#ui-tests-and-animations): the UI tests run without GTK animations; on CI a redrawing spinner kept the frame source ready and starved the idle callbacks that deliver worker results.

@@ -4,7 +4,7 @@ title: Playback
 description: The play queue and its editing, repeat and shuffle, the queue kept across restarts, streaming through the local media proxy as POST, quality per route, volume normalisation, scrobbling, sleep timer, lyrics, and the player bar and Now Playing page.
 tags: [playback, gstreamer, queue, proxy, scrobble]
 resource: ../nauta/player.py
-generated: { by: claude-code/2.1.317, at: 2026-11-04T14:00:00Z }
+generated: { by: claude-code/2.1.317, at: 2026-11-05T12:00:00Z }
 ---
 
 # Queue (`player.py`)
@@ -100,6 +100,26 @@ played, or at its end.
   goes on. Opening Nauta again shows the same window. When nothing is
   left to play (stopped, last song ended, error) a hidden Nauta quits.
   "Quit" in the main menu (Ctrl+Q) and the media controls' Quit end both.
+- **Play in Background** (Preferences → Playback, on by default,
+  `play_in_background` in `account.json`): off, closing the window stops
+  the music and quits.
+- **The background notification** (`background.py`): while the window
+  is hidden, Nauta shows a notification "Nauta plays in the background".
+  Phosh's media widget on the lock screen and in quick settings can't be
+  swiped away or closed (read from Phosh's source, `main` at `6886a53`,
+  2026-11-04: `media-player.c` has no gesture or close button, it shows
+  while the player reports `CanPlay`), but notifications can. Swiping
+  the notification away (Phosh closes it with reason 3), "Clear all"
+  (reason 2) or its **Quit** button quit Nauta; tapping it opens the
+  window. When the window comes back, Nauta closes the notification
+  itself and ignores the `NotificationClosed` that follows. It is sent
+  to `org.freedesktop.Notifications` directly (manifest
+  `--talk-name=org.freedesktop.Notifications`): the notification portal
+  doesn't report dismissal. Hints: `desktop-entry` (grouped under
+  Nauta), `resident` (stays after an action), `suppress-sound`; timeout
+  -1, so Phosh's banner goes after its own timeout and the entry stays
+  in the list (only `transient` ones are removed at expiry). Phosh has
+  no system tray; this notification is its place.
 - While music plays, suspend is inhibited (`Gtk.Application.inhibit`
   with `SUSPEND`, released on pause), so Phosh does not suspend the
   phone with the screen off. Without a session manager the call returns
@@ -141,7 +161,13 @@ reports an error. `tests/test_mpris.py`: the interface on a private
 dbus-daemon, driven like a lock screen (properties, change signals,
 PlayPause, Play, Seek, Next, Raise, Quit, cover as a local file).
 `tests/test_ui.py`: closing the window while playing hides it, holds
-the app and inhibits suspend; pausing keeps it; stopping quits.
+the app and inhibits suspend; pausing keeps it; stopping quits; with
+Play in Background off, closing stops and quits.
+`tests/test_background.py` (2026-11-05): the background notification on
+a private dbus-daemon against a stand-in server that answers like
+Phosh: swiping away and "Clear all" quit, expiry doesn't, Quit quits,
+tapping opens, withdrawing (also while Notify is on its way) doesn't
+quit. Not yet tried in Phosh on the phone.
 `tests/test_player.py` also: play next and add, remove and move with
 the current song kept, shuffle on and off, repeat all and one, the
 queue saved and resumed at its position, `rgvolume` in the pipeline
