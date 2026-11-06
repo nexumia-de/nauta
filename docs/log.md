@@ -1,5 +1,8 @@
 # Directory Update Log
 
+## 2026-11-06
+* **Update**: [App name](decisions/app-name.md): the owner chose the visible name **Jukebox** (#26). `.desktop` `Name` (plus `GenericName=Music Player` and the keyword `nauta`), metainfo `<name>`, window title, About dialog, welcome page, MPRIS `Identity` and the texts that name the app say Jukebox, the nightly "Jukebox (Nightly)"; repository, app id, package, docs, the Subsonic client name, the MPRIS bus name and the `User-Agent` keep the code name Nauta.
+
 ## 2026-11-05
 * **Update**: [Playback](playback.md#with-the-window-closed-windowpy), at the owner's request: while Nauta plays with its window closed it shows a notification; swiping it away, "Clear all" or its Quit button quit Nauta, tapping opens the window (`background.py`, manifest `--talk-name=org.freedesktop.Notifications`). Phosh's media widget can't be dismissed (read from Phosh's source at `6886a53`). New setting Play in Background (Preferences → Playback, on by default); off, closing the window quits. Tested against a stand-in notification server on a private dbus-daemon; not yet in Phosh on the phone.
 

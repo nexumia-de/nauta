@@ -83,7 +83,7 @@ class Subsonic:
         answer = _answer(response.body, allow_failed=True)
         names = {e.get("name") for e in answer.get("openSubsonicExtensions") or []}
         if not answer.get("openSubsonic") or not set(REQUIRED_EXTENSIONS) <= names:
-            raise HttpError(SERVER, "Nauta needs an OpenSubsonic server such as "
+            raise HttpError(SERVER, "Jukebox needs an OpenSubsonic server such as "
                                     "Navidrome")
         return answer
 

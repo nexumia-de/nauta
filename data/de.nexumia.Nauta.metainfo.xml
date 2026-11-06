@@ -3,11 +3,11 @@
   <id>de.nexumia.Nauta</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>AGPL-3.0-or-later</project_license>
-  <name>Nauta</name>
+  <name>Jukebox</name>
   <summary>Listen to your Navidrome library</summary>
   <description>
     <p>
-      Nauta plays the music of your own Navidrome server, or another
+      Jukebox plays the music of your own Navidrome server, or another
       OpenSubsonic server, on a Phosh phone and on the desktop.
     </p>
     <ul>
@@ -19,7 +19,7 @@
       <li>Find new songs and download them into your library with your own MeTube server</li>
     </ul>
     <p>
-      Nauta is an independent project and not affiliated with the
+      Jukebox is an independent project and not affiliated with the
       Navidrome project.
     </p>
   </description>

@@ -1,11 +1,12 @@
 [Desktop Entry]
 Type=Application
-Name=Nauta
+Name=Jukebox
+GenericName=Music Player
 Comment=Listen to your Navidrome library
 Exec=nauta
 Icon=de.nexumia.Nauta
 Terminal=false
 Categories=GTK;AudioVideo;Audio;Player;
-Keywords=navidrome;subsonic;opensubsonic;music;songs;albums;artists;playlists;stream;
+Keywords=nauta;navidrome;subsonic;opensubsonic;music;songs;albums;artists;playlists;stream;
 StartupNotify=true
 X-Purism-FormFactor=Workstation;Mobile;

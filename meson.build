@@ -80,11 +80,11 @@ configure_file(
 
 if nightly
   # The stable files in data/ stay the only source; the nightly app gets
-  # its own id and the name "Nauta (Nightly)".
+  # its own id and the name "Jukebox (Nightly)".
   sed = find_program('sed')
   variant = [sed, '-e', 's/' + base_id + '/' + app_id + '/g',
-             '-e', 's/^Name=Nauta$/Name=Nauta (Nightly)/',
-             '-e', 's|<name>Nauta</name>|<name>Nauta (Nightly)</name>|',
+             '-e', 's/^Name=Jukebox$/Name=Jukebox (Nightly)/',
+             '-e', 's|<name>Jukebox</name>|<name>Jukebox (Nightly)</name>|',
              '@INPUT@']
   desktop = configure_file(input: 'data' / base_id + '.desktop',
     output: app_id + '.desktop', command: variant, capture: true)

@@ -13,7 +13,7 @@ def connection_form(window, account, toast=None):
         window, account, settings.certificates(), connection.probe_with,
         USER_AGENT,
         server_description="The address you use to reach Navidrome from anywhere",
-        home_description="On these Wi-Fi networks Nauta talks to the server "
+        home_description="On these Wi-Fi networks Jukebox talks to the server "
                          "directly. The local address is used only on the "
                          "networks listed here.",
         toast=toast, proxy_basic=True)
@@ -37,7 +37,7 @@ class SetupPage(Adw.NavigationPage):
         intro = Adw.PreferencesGroup()
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         box.append(Gtk.Image(icon_name=window.app_icon, pixel_size=96))
-        title = Gtk.Label(label="Welcome to Nauta", wrap=True,
+        title = Gtk.Label(label="Welcome to Jukebox", wrap=True,
                           justify=Gtk.Justification.CENTER)
         title.add_css_class("title-1")
         box.append(title)

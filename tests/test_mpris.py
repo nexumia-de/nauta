@@ -96,7 +96,7 @@ def prop(bus, name, interface=mpris.PLAYER):
 def test_lock_screen_controls(setup, demo):
     player, bus, calls = setup
     assert prop(bus, "PlaybackStatus") == "Stopped"
-    assert prop(bus, "Identity", mpris.ROOT) == "Nauta"
+    assert prop(bus, "Identity", mpris.ROOT) == "Jukebox"
     changes = []
     bus.signal_subscribe(None, "org.freedesktop.DBus.Properties", "PropertiesChanged",
                          mpris.PATH, None, Gio.DBusSignalFlags.NONE,
