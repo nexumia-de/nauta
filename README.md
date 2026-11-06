@@ -1,6 +1,8 @@
-# Nauta
+# Jukebox (Nauta)
 
-Latin for *sailor*, a nod to Navidrome.
+*Jukebox* is the name you see in the app grid; the code name *Nauta*
+is used for the repository, app id and package. It is Latin for
+*sailor*, a nod to Navidrome.
 
 Adaptive GTK4/libadwaita music client for
 [Navidrome](https://www.navidrome.org/) and other OpenSubsonic servers
@@ -43,7 +45,7 @@ project.
 
 After the first release, on the phone open <https://flatpak.nexumia.de/>
 and tap Nauta; GNOME Software installs it and keeps it updated.
-*Nauta (Nightly)* follows every push to `main`. See
+*Jukebox (Nightly)* follows every push to `main`. See
 [docs/release-channels.md](docs/release-channels.md).
 
 ## Support

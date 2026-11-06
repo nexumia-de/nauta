@@ -6,7 +6,9 @@ Music client for [Navidrome](https://www.navidrome.org/) (and other
 OpenSubsonic servers) on Phosh phones and the desktop. The shared rules
 in ../phosh-toolkit/AGENTS.md apply as well.
 
-- App id: `de.nexumia.Nauta`.
+- App id: `de.nexumia.Nauta`. Visible name: **Jukebox** (chosen by the
+  owner on 2026-11-06, [decision](docs/decisions/app-name.md)); the code
+  name Nauta stays for the repository, app id, package and docs.
 - Plan: work items are [issues](https://github.com/nexumia-de/nauta/issues)
   in [milestones](https://github.com/nexumia-de/nauta/milestones); goals
   per milestone are in [docs/roadmap.md](docs/roadmap.md). Work on the

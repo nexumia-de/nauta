@@ -16,7 +16,7 @@ def download_form(window, account, toast=None):
         USER_AGENT,
         server_description="The address of your MeTube server. Set MeTube's "
                            "audio folder inside Navidrome's music folder.",
-        home_description="On these Wi-Fi networks Nauta talks to MeTube "
+        home_description="On these Wi-Fi networks Jukebox talks to MeTube "
                          "directly. The local address is used only on the "
                          "networks listed here.",
         toast=toast, proxy_basic=True)

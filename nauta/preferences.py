@@ -162,7 +162,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
     def _on_download_remove(self, *_):
         dialog = Adw.AlertDialog(
             heading="Remove Download Server?",
-            body="Nauta forgets MeTube's addresses, certificate and proxy "
+            body="Jukebox forgets MeTube's addresses, certificate and proxy "
                  "login. Songs already downloaded stay in your library.")
         dialog.add_response("cancel", "Cancel")
         dialog.add_response("remove", "Remove")
@@ -202,7 +202,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
     def _on_sign_out(self, *_):
         dialog = Adw.AlertDialog(
             heading="Sign Out?",
-            body="Nauta forgets your password and stops playing. The server "
+            body="Jukebox forgets your password and stops playing. The server "
                  "address and certificate stay.")
         dialog.add_response("cancel", "Cancel")
         dialog.add_response("sign-out", "Sign Out")

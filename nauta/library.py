@@ -4,7 +4,7 @@ from gi.repository import Adw, Gio, GLib, Gtk
 from phosh_toolkit import route
 from phosh_toolkit.router import CONNECTING, OFFLINE
 
-from nauta import playlist_edit, text, widgets
+from nauta import NAME, playlist_edit, text, widgets
 
 # Albums are loaded in pages of this size, up to MAX_ALBUMS.
 PAGE = 100
@@ -241,7 +241,7 @@ class MainPage(Adw.NavigationPage):
         menu = Gio.Menu()
         menu.append("Find New Music", "app.find-music")
         menu.append("Preferences", "app.preferences")
-        menu.append("About Nauta", "app.about")
+        menu.append(f"About {NAME}", "app.about")
         # Closing the window keeps the music playing; this ends both.
         menu.append("Quit", "app.quit")
         header.pack_end(Gtk.MenuButton(icon_name="open-menu-symbolic",

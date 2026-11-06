@@ -41,7 +41,7 @@ Nauta uses the remote address only.
 
 The probe is `getOpenSubsonicExtensions` (no credentials): the server
 must answer as an OpenSubsonic server with the `formPost` extension,
-or setup stops with "Nauta needs an OpenSubsonic server such as
+or setup stops with "Jukebox needs an OpenSubsonic server such as
 Navidrome".
 
 # Switching while the app runs
