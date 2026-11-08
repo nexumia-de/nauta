@@ -1,5 +1,8 @@
 # Directory Update Log
 
+## 2026-11-08
+* **Update**: `AGENTS.md` imports `agents/core.md` and `agents/gtk-app.md` from phosh-toolkit instead of its whole `AGENTS.md`; repeated shared rules removed (toolkit decision "lean agent rules", to use fewer tokens per session).
+
 ## 2026-11-06
 * **Update**: [App name](decisions/app-name.md): the owner chose the visible name **Jukebox** (#26). `.desktop` `Name` (plus `GenericName=Music Player` and the keyword `nauta`), metainfo `<name>`, window title, About dialog, welcome page, MPRIS `Identity` and the texts that name the app say Jukebox, the nightly "Jukebox (Nightly)"; repository, app id, package, docs, the Subsonic client name, the MPRIS bus name and the `User-Agent` keep the code name Nauta.
 
