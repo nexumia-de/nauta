@@ -1,4 +1,5 @@
-@../phosh-toolkit/AGENTS.md
+@../phosh-toolkit/agents/core.md
+@../phosh-toolkit/agents/gtk-app.md
 
 # Nauta
 
@@ -9,11 +10,7 @@ in ../phosh-toolkit/AGENTS.md apply as well.
 - App id: `de.nexumia.Nauta`. Visible name: **Jukebox** (chosen by the
   owner on 2026-11-06, [decision](docs/decisions/app-name.md)); the code
   name Nauta stays for the repository, app id, package and docs.
-- Plan: work items are [issues](https://github.com/nexumia-de/nauta/issues)
-  in [milestones](https://github.com/nexumia-de/nauta/milestones); goals
-  per milestone are in [docs/roadmap.md](docs/roadmap.md). Work on the
-  issues of the current milestone first; do not start later milestones
-  without asking.
+- Plan: [milestones](https://github.com/nexumia-de/nauta/milestones); goals in [docs/roadmap.md](docs/roadmap.md).
 - Connection: local address on the owner's home Wi-Fi, remote address
   elsewhere, the remote one behind mutual TLS. Read
   [docs/connection.md](docs/connection.md) before touching
