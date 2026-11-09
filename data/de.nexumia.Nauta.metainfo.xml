@@ -49,7 +49,88 @@
     <control>touch</control>
     <internet>always</internet>
   </supports>
+  <screenshots>
+    <screenshot type="default">
+      <caption>The newest albums of the library</caption>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.2.0/albums-phone-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The newest albums of the library</caption>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.2.0/albums-desktop-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>An album</caption>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.2.0/album-phone-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>An album</caption>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.2.0/album-desktop-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Now playing, with the queue</caption>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.2.0/now-playing-phone-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Now playing, with the queue</caption>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.2.0/now-playing-desktop-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>An artist with popular songs, artist radio and similar artists</caption>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.2.0/artist-phone-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>An artist with popular songs, artist radio and similar artists</caption>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.2.0/artist-desktop-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Lyrics that follow the song</caption>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.2.0/lyrics-phone-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Lyrics that follow the song</caption>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.2.0/lyrics-desktop-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Finding new music with your own MeTube server</caption>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.2.0/find-music-phone-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Finding new music with your own MeTube server</caption>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.2.0/find-music-desktop-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Downloading a whole album, or only some of its songs</caption>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.2.0/find-album-phone-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Downloading a whole album, or only some of its songs</caption>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.2.0/find-album-desktop-light.png</image>
+    </screenshot>
+  </screenshots>
   <releases>
+    <release version="0.2.0" date="2026-11-09">
+      <description>
+        <ul>
+          <li>Find new music by album or playlist too: download a whole album or playlist at once, or only the songs you pick, also from a pasted link.</li>
+          <li>Sort albums by when they were added or played, by play count, name, artist or likes.</li>
+          <li>While Nauta plays in the background it shows a notification: swipe it away or tap Quit to close Nauta, and turn background playback off in Preferences if closing the window should stop the music.</li>
+          <li>Music keeps playing when the window is closed and the screen is off, and the lock screen shows controls for it.</li>
+          <li>Artist pages show popular songs and similar artists, with an artist radio, when the server has Last.fm set up.</li>
+          <li>Find new music: search YouTube Music or YouTube and download songs into your library through your own MeTube server, reached at home and away like Navidrome, with client certificate and proxy login.</li>
+          <li>Like songs, albums and artists with the star and find them again under Liked Songs.</li>
+          <li>Lyrics follow the song line by line when the server has synced lyrics.</li>
+          <li>Make, rename, reorder and delete playlists, and add or remove songs, right in the app.</li>
+          <li>Proxies with user name and password (such as Pangolin's header authentication) are signed in once in the connection settings, so the proxy's login page no longer comes back when its session ends.</li>
+          <li>Servers behind a reverse proxy with its own login (such as Pangolin, Authelia or Authentik) work: Nauta shows the proxy's login page and keeps the session.</li>
+          <li>Now Playing shows what comes next, lets you remove and reorder songs, and has shuffle, repeat and a sleep timer; the queue is still there after a restart.</li>
+          <li>Songs play at the same loudness, using their ReplayGain tags; this can be changed in the preferences.</li>
+          <li>Every song has a menu to play it next, add it to the queue, like it, add it to a playlist, start a song radio or go to its album or artist; swiping a song to the left adds it to the queue.</li>
+          <li>The app is now called Jukebox.</li>
+          <li>Japanese, Chinese and Korean artist, album and track names are shown instead of empty boxes.</li>
+          <li>Leaving the home Wi-Fi while Nauta runs now switches to the remote address right away, and a playing song continues through it.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-11-04">
       <description>
         <p>First version: sign in to a Navidrome server, browse albums, artists and playlists, search and play music.</p>
