@@ -2,6 +2,7 @@
 
 ## 2026-11-16
 * **Update**: The Flatpak module `phosh-toolkit` is pinned to the toolkit tag `v0.4.0` (commit `89e3505`) instead of `v0.3.0` ([dependencies](dependencies.md)). It brings the security fixes of nexumia-de/phosh-toolkit#47: redirects followed by `http.Client` itself with an allow-list of headers across origins, no queries, user info or proxy secret in log lines, image cache files named after a hash (old files removed once at start, so covers are fetched again once), proxy cookies scoped to their origin. No API Nauta uses changed; `make_page()`/`sign_in()` gained `certificate_hosts_extra`.
+* **Fix**: `Covers.path()` (the MPRIS cover file) still named the file after the key; with toolkit v0.4.0 `ImageCache` names it after `phosh_toolkit.images.file_name(key)` (SHA-256), so `mpris:artUrl` never appeared and `test_mpris.py::test_lock_screen_controls` timed out. It now uses `file_name()`.
 
 ## 2026-11-08
 * **Update**: `AGENTS.md` imports `agents/core.md` and `agents/gtk-app.md` from phosh-toolkit instead of its whole `AGENTS.md`; repeated shared rules removed (toolkit decision "lean agent rules", to use fewer tokens per session).

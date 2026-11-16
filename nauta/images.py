@@ -1,6 +1,6 @@
 """Cover art: fetched through the connection, cached on disk and as
 textures in memory (phosh_toolkit.images)."""
-from phosh_toolkit.images import ImageCache
+from phosh_toolkit.images import ImageCache, file_name
 
 from nauta import settings
 
@@ -11,8 +11,9 @@ class Covers:
         self._cache = ImageCache(settings.cache_dir() / "covers", connection.call)
 
     def path(self, cover_id, size):
-        """Where the cover's file is once loaded (for MPRIS)."""
-        return self._cache.directory / f"{cover_id}-{size}"
+        """Where the cover's file is once loaded (for MPRIS): named after
+        a hash of the key, as ImageCache stores it."""
+        return self._cache.directory / file_name(f"{cover_id}-{size}")
 
     def load(self, cover_id, size, done):
         """done(texture or None) on the main loop. `size` in logical
