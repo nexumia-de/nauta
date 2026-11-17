@@ -57,6 +57,7 @@ address, client certificate, home Wi-Fi), so the rules of
 | Client certificate | `client-certificate` | `download-certificate`, own password |
 | Proxy login cookies | kind `proxy-cookies` | kind `proxy-cookies` in its own schema |
 | Proxy user name and password (HTTP Basic) | kind `proxy-credentials` | kind `proxy-credentials` in its own schema |
+| Certificate hosts ([connection](connection.md#certificate-hosts-identity-provider-on-another-host)) | `certificate_hosts` in `account.json` | `certificate_hosts` in `downloads.json` |
 | Probe | `getOpenSubsonicExtensions` | `GET /version` (needs `yt-dlp` in the answer) |
 | Local address | only on a listed home Wi-Fi (`strict_local`) | the same: MeTube has no server id |
 

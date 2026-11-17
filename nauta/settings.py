@@ -27,6 +27,9 @@ class Account:
     local_url: str = ""
     home_networks: list = field(default_factory=list)
     certificate: bool = False
+    # Hosts besides the server's that get the client certificate in the
+    # proxy login (nauta.connection_form, docs/connection.md).
+    certificate_hosts: list = field(default_factory=list)
     user_name: str = ""
     # From the server's answer, for the preferences ("navidrome 0.64.2").
     server_type: str = ""
@@ -55,6 +58,7 @@ class DownloadServer:
     local_url: str = ""
     home_networks: list = field(default_factory=list)
     certificate: bool = False
+    certificate_hosts: list = field(default_factory=list)
     # MeTube's audio format (nauta.metube.FORMATS) and the last search
     # source (nauta.metube.SOURCES) and what was searched there
     # (nauta.metube.KINDS; YouTube searches videos only).
