@@ -4,7 +4,7 @@ title: Connection, home network, client certificates and the password
 description: How Nauta picks the local address on a listed home Wi-Fi and the remote address elsewhere, presents a client certificate, keeps the password in the keyring and sends it only in request bodies.
 tags: [connection, network, mtls, tls, keyring, security, subsonic]
 resource: ../nauta/connection.py
-generated: { by: claude-code/2.1.317, at: 2026-11-04T14:00:00Z }
+generated: { by: claude-code/2.1.317, at: 2026-11-17T00:30:00Z }
 ---
 
 The route, client certificates, connection form, keyring and media
@@ -72,6 +72,31 @@ shows the proxy's login page in a web view
 The proxy's cookies are kept in the keyring (kind `proxy-cookies`) and
 loaded by `Connection`; they go only to the server's address, also for
 playback through the media proxy.
+
+## Certificate hosts (identity provider on another host)
+
+The web view gives the client certificate only to the server's host and
+to the hosts in `certificate_hosts_extra` (toolkit v0.4.0,
+nexumia-de/phosh-toolkit#47); any other host that asks gets none and its
+request is cancelled. A login whose identity provider is on another host
+behind the same mutual TLS (e.g. Pangolin's or Authelia's page on
+`auth.example.org` while Navidrome is on `music.example.org`) needs that
+host listed (#45):
+
+- setting `certificate_hosts` (list of host names) in `account.json`
+  and `downloads.json`;
+- edited in the connection form's "Proxy Login" row as "Certificate
+  Hosts", comma or space separated; `nauta.connection_form.parse_hosts`
+  lower-cases them and takes the host of a pasted URL. The form is
+  `nauta.connection_form.Form`, the toolkit's form plus this row, so it
+  appears in setup, Preferences → Connection and Preferences → Downloads;
+- passed as `certificate_hosts_extra=` to both `proxy_login.sign_in()`
+  calls in `Window` (music server and MeTube). Test
+  `test_proxy_login_opens_the_login_page`, `tests/test_connection_form.py`.
+- Not yet for the first login from the setup form: the toolkit's
+  `ConnectionForm` calls `make_page()` without the hosts
+  (nexumia-de/phosh-toolkit#52); once a toolkit tag has it, Nauta passes
+  the setting there too.
 
 ## Proxy user name and password instead (HTTP Basic)
 

@@ -205,6 +205,7 @@ class Window(Adw.ApplicationWindow):
             proxy_login.sign_in(self.nav, connection, connection.api.http,
                                 connection.proxy_cookies,
                                 connection_module.probe_through, url,
+                                certificate_hosts_extra=connection.account.certificate_hosts,
                                 on_basic=lambda: self.toast(
                                     "The proxy didn't accept its user name and "
                                     "password. Check Proxy Login in Preferences → "
@@ -216,6 +217,7 @@ class Window(Adw.ApplicationWindow):
             proxy_login.sign_in(self.nav, downloads, downloads.api.http,
                                 downloads.proxy_cookies,
                                 downloads_module.probe_through, url,
+                                certificate_hosts_extra=downloads.account.certificate_hosts,
                                 on_basic=lambda: self.toast(
                                     "MeTube's proxy didn't accept its user name "
                                     "and password. Check Proxy Login in "

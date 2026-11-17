@@ -20,6 +20,7 @@ python.install_sources(
   'nauta/artist.py',
   'nauta/background.py',
   'nauta/connection.py',
+  'nauta/connection_form.py',
   'nauta/demo.py',
   'nauta/demo_metube.py',
   'nauta/downloads.py',

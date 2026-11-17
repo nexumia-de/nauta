@@ -3,20 +3,21 @@ the home network (docs/connection.md). The connection form
 (phosh_toolkit.connection_form) is also the "Connection" page of the
 preferences."""
 from gi.repository import Adw, GLib, Gtk
-from phosh_toolkit.connection_form import ConnectionForm, describe_error
+from phosh_toolkit.connection_form import describe_error
 
 from nauta import USER_AGENT, connection, settings
+from nauta.connection_form import Form
 
 
 def connection_form(window, account, toast=None):
-    return ConnectionForm(
+    return Form(
         window, account, settings.certificates(), connection.probe_with,
         USER_AGENT,
         server_description="The address you use to reach Navidrome from anywhere",
         home_description="On these Wi-Fi networks Jukebox talks to the server "
                          "directly. The local address is used only on the "
                          "networks listed here.",
-        toast=toast, proxy_basic=True)
+        toast=toast)
 
 
 def _button(label):

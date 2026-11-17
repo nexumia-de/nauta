@@ -179,6 +179,7 @@ def test_proxy_login_opens_the_login_page(app, demo, monkeypatch):
     account = store.load()
     account.remote_url = demo.url
     account.user_name = "robin"
+    account.certificate_hosts = ["auth.example.org"]
     store.save(account)
     keyring.store(keyring.PASSWORD, PASSWORD)
     conn = connection.Connection(store, watch=False)
@@ -189,6 +190,8 @@ def test_proxy_login_opens_the_login_page(app, demo, monkeypatch):
     conn.emit("proxy-login", demo.url + "/login")
     assert calls and calls[0][0][0] is window.nav
     assert calls[0][0][5] == demo.url + "/login"
+    # An identity provider on another host gets the certificate (#45).
+    assert calls[0][1]["certificate_hosts_extra"] == ["auth.example.org"]
     # A proxy that wants HTTP Basic auth points to the preferences.
     toasts = []
     monkeypatch.setattr(window, "toast", toasts.append)

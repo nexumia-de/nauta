@@ -1,5 +1,8 @@
 # Directory Update Log
 
+## 2026-11-17
+* **Update**: [Connection](connection.md#certificate-hosts-identity-provider-on-another-host), #45: new setting `certificate_hosts` for the music server and MeTube, edited as "Certificate Hosts" in the connection form's Proxy Login row (`nauta/connection_form.py`) and passed as `certificate_hosts_extra` to `proxy_login.sign_in()`, so an identity provider on another host behind the same mutual TLS keeps getting the client certificate with toolkit v0.4.0. The setup form's first login still lacks it (nexumia-de/phosh-toolkit#52). Same design as Ephyra (nexumia-de/ephyra#34).
+
 ## 2026-11-16
 * **Update**: The Flatpak module `phosh-toolkit` is pinned to the toolkit tag `v0.4.0` (commit `89e3505`) instead of `v0.3.0` ([dependencies](dependencies.md)). It brings the security fixes of nexumia-de/phosh-toolkit#47: redirects followed by `http.Client` itself with an allow-list of headers across origins, no queries, user info or proxy secret in log lines, image cache files named after a hash (old files removed once at start, so covers are fetched again once), proxy cookies scoped to their origin. No API Nauta uses changed; `make_page()`/`sign_in()` gained `certificate_hosts_extra`.
 * **Fix**: `Covers.path()` (the MPRIS cover file) still named the file after the key; with toolkit v0.4.0 `ImageCache` names it after `phosh_toolkit.images.file_name(key)` (SHA-256), so `mpris:artUrl` never appeared and `test_mpris.py::test_lock_screen_controls` timed out. It now uses `file_name()`.
