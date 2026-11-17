@@ -4,15 +4,14 @@ MeTube server (docs/downloads.md). Pages on the navigation view: setting
 up the download server, search, the songs of an album or playlist, and
 MeTube's list of downloads."""
 from gi.repository import Adw, GLib, Gtk
-from phosh_toolkit.connection_form import describe_error
+from phosh_toolkit.connection_form import ConnectionForm, describe_error
 
 from nauta import USER_AGENT, downloads, metube, settings, text, widgets
-from nauta.connection_form import Form
 from nauta.ytmusic import ALBUMS
 
 
 def download_form(window, account, toast=None):
-    return Form(
+    return ConnectionForm(
         window, account, settings.download_certificates(), downloads.probe_with,
         USER_AGENT,
         server_description="The address of your MeTube server. Set MeTube's "
@@ -20,7 +19,7 @@ def download_form(window, account, toast=None):
         home_description="On these Wi-Fi networks Jukebox talks to MeTube "
                          "directly. The local address is used only on the "
                          "networks listed here.",
-        toast=toast)
+        toast=toast, proxy_basic=True)
 
 
 def format_row(account, changed):
