@@ -28,7 +28,7 @@ class Account:
     home_networks: list = field(default_factory=list)
     certificate: bool = False
     # Hosts besides the server's that get the client certificate in the
-    # proxy login (nauta.connection_form, docs/connection.md).
+    # proxy login (toolkit ConnectionForm, docs/connection.md).
     certificate_hosts: list = field(default_factory=list)
     user_name: str = ""
     # From the server's answer, for the preferences ("navidrome 0.64.2").

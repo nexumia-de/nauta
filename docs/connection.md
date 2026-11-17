@@ -85,18 +85,17 @@ host listed (#45):
 
 - setting `certificate_hosts` (list of host names) in `account.json`
   and `downloads.json`;
-- edited in the connection form's "Proxy Login" row as "Certificate
-  Hosts", comma or space separated; `nauta.connection_form.parse_hosts`
-  lower-cases them and takes the host of a pasted URL. The form is
-  `nauta.connection_form.Form`, the toolkit's form plus this row, so it
-  appears in setup, Preferences → Connection and Preferences → Downloads;
+- edited as "Other Certificate Hosts" in the toolkit's connection form
+  (an expander in the server group, shown while a certificate is
+  chosen; toolkit v0.5.0, nexumia-de/phosh-toolkit#52/#53, which also
+  has `proxy_login.parse_hosts`). `ConnectionForm.apply()` writes
+  `account.certificate_hosts`, so the form appears in setup,
+  Preferences → Connection and Preferences → Downloads without own code;
 - passed as `certificate_hosts_extra=` to both `proxy_login.sign_in()`
   calls in `Window` (music server and MeTube). Test
   `test_proxy_login_opens_the_login_page`, `tests/test_connection_form.py`.
-- Not yet for the first login from the setup form: the toolkit's
-  `ConnectionForm` calls `make_page()` without the hosts
-  (nexumia-de/phosh-toolkit#52); once a toolkit tag has it, Nauta passes
-  the setting there too.
+- The form passes the hosts to `make_page()` itself, so the first login from
+  the setup form gets them too.
 
 ## Proxy user name and password instead (HTTP Basic)
 

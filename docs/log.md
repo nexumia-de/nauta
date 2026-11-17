@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-11-17
+* **Update**: The Flatpak module `phosh-toolkit` is pinned to `v0.5.0` (commit `e5cccb6`) ([dependencies](dependencies.md)). Its `ConnectionForm` has the "Other Certificate Hosts" row itself (phosh-toolkit#52/#53) and passes the hosts to the first login too, so `nauta/connection_form.py` (own row and `parse_hosts`) is removed; `setup.py` and `find.py` use the toolkit's form with `proxy_basic=True`, music server and MeTube alike. [Connection](connection.md#certificate-hosts-identity-provider-on-another-host) updated.
 * **Update**: [Connection](connection.md#certificate-hosts-identity-provider-on-another-host), #45: new setting `certificate_hosts` for the music server and MeTube, edited as "Certificate Hosts" in the connection form's Proxy Login row (`nauta/connection_form.py`) and passed as `certificate_hosts_extra` to `proxy_login.sign_in()`, so an identity provider on another host behind the same mutual TLS keeps getting the client certificate with toolkit v0.4.0. The setup form's first login still lacks it (nexumia-de/phosh-toolkit#52). Same design as Ephyra (nexumia-de/ephyra#34).
 
 ## 2026-11-16
