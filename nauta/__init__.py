@@ -5,7 +5,7 @@ try:
 except ImportError:  # run from the source tree, config.py is not built
     APP_ID = "de.nexumia.Nauta"
     BUILD_LABEL = ""
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 # The nightly app is built from every push to main
 # (docs/release-channels.md).
 NIGHTLY = APP_ID.endswith(".Devel")
