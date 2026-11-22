@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-11-22
+* **Update**: phosh-toolkit pinned to `v0.7.0` (commit `13275a7`) in the manifest and, by commit with `# v0.7.0`, in the three reusable workflows instead of `@main` ([dependencies](dependencies.md)). It brings the thread dump of `testing.run_until` on a timeout (diagnostics for hanging UI tests) and the Precheck and Flatpak OK jobs; no API Nauta uses changed. Required check names stay valid ([owner checks](owner-checks.md#adopt-phosh-toolkit-v070)).
 * **Creation**: [Owner checks](owner-checks.md): what only the owner can do, per closed issue, and adopting phosh-toolkit `v0.7.0` (hang diagnostics in `run_until`) once it is tagged. Battery and CPU while streaming (#7) needs the phone; the method is there and [playback](playback.md#battery-and-cpu) waits for the results.
 * **Creation**: [No share links](decisions/no-share-links.md) (#36): behind the owner's mutual TLS a Navidrome share link opens for nobody else; making it open needs a public path past the client certificate. Navidrome facts from `7c1e68a`.
 * **Update**: [Playback](playback.md#not-planned): crossfade, equalizer and playback speed are not planned (#35).

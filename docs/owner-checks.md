@@ -95,20 +95,13 @@ MeTube, in Find New Music on YouTube Music:
 
 # Adopt phosh-toolkit v0.7.0
 
-nexumia-de/phosh-toolkit#59 (not merged on 2026-11-22) prints the
-stacks of all threads when `phosh_toolkit.testing.run_until` times out,
-so a UI test that hangs in CI shows where (toolkit #27). Nauta's tests
-already call that function (`tests/conftest.py`), so the pin alone
-brings it. Nauta may only pin a tag, so this waits for `v0.7.0`.
+Done on 2026-11-22: the manifest and the three reusable workflows are
+pinned to `v0.7.0` (commit `13275a7`); the toolkit's `run_until` now
+prints all thread stacks when a UI test times out.
 
-- [ ] Merge phosh-toolkit#59 and create the tag `v0.7.0`.
-- [ ] Then (an agent can do this in one pull request): in
-  `de.nexumia.Nauta.yml` set the `phosh-toolkit` source to
-  `tag: v0.7.0` with its commit, and pin the three reusable workflows
-  in `.github/workflows/` (`flatpak.yml`, `release.yml`,
-  `update-check.yml`) to that commit with `# v0.7.0`, as the toolkit's
-  `docs/toolkit-usage.md` describes at that tag. Record it in
-  [dependencies](dependencies.md) and the log.
-- [ ] If that pull request switches the required Flatpak check to
-  `flatpak / Flatpak OK` in `.github/rulesets/main.json`, import the
-  ruleset again in the repository settings.
+- [ ] The required checks in `.github/rulesets/main.json` still name
+  `flatpak / REUSE compliance`, `flatpak / Build (x86_64)` and
+  `flatpak / Build (aarch64)`; those jobs keep their names in v0.7.0,
+  so nothing breaks. Switching to the aggregate `flatpak / Flatpak OK`
+  (toolkit `docs/branch-protection.md`) is optional and needs the
+  ruleset imported again in the repository settings.
