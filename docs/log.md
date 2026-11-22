@@ -2,6 +2,7 @@
 
 ## 2026-11-22
 * **Creation**: [Owner checks](owner-checks.md): what only the owner can do, per closed issue. Battery and CPU while streaming (#7) needs the phone; the method is there and [playback](playback.md#battery-and-cpu) waits for the results.
+* **Update**: [Playback](playback.md#not-planned): crossfade, equalizer and playback speed are not planned (#35).
 * **Update**: [Library features](library.md#why), [roadmap](roadmap.md): offline albums and playlists are not planned (#34).
 * **Update**: [Finding new music](downloads.md#not-covered-yet): artist search, YouTube's own playlists and covers in the results are not planned (#23): more requests to YouTube and more hosts than the search decision allows.
 * **Update**: [Finding new music](downloads.md#verified-on-the-phone-2026-11-06-owner): the owner's report that song search works on the phone (#22); the remaining album and playlist checks are [owner checks](owner-checks.md#album-and-playlist-search-on-the-phone-22).

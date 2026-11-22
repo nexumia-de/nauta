@@ -184,9 +184,21 @@ The design, from the toolkit's `media.py` at `v0.5.0`:
 What only the owner can do is in the
 [owner checks](owner-checks.md#gapless-playback-8).
 
-# Not yet
+# Not planned
 
-Crossfade (#35) needs two pipelines overlapping, on top of gapless.
+Crossfade, equalizer and playback speed (#35, closed 2026-11-22):
+
+- **Crossfade** needs two pipelines playing at once, on top of gapless
+  playback, which itself waits for the toolkit (#8). Gapless is what
+  live albums and mixes need; crossfading them would blur exactly
+  those transitions.
+- **Equalizer**: sound shaping belongs to the system, where it applies
+  to every app and to the headphones in use (PipeWire filters such as
+  EasyEffects), not to one player.
+- **Speed**: meant for podcasts and audiobooks; for music it changes
+  the song.
+
+A new issue if one of them becomes a need.
 
 # Verified (2026-11-04, cloud container, GStreamer 1.24)
 
