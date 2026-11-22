@@ -25,8 +25,9 @@ sources:
 The owner asked for the everyday features of Spotify that Navidrome
 can serve (2026-11-04): queueing from any song, a menu on every
 song, likes, playlist editing, radio. Issues #27–#33; what is left
-over is in #36 (share links) and #8 (gapless); crossfade, equalizer
-and speed (#35) are [not planned](playback.md#not-planned).
+over is gapless playback (#8); crossfade, equalizer and speed (#35)
+are [not planned](playback.md#not-planned), and share links (#36) are
+left out by [decision](decisions/no-share-links.md).
 
 Offline albums and playlists (#34) are not planned (closed
 2026-11-22): they need their own storage, a sync that follows

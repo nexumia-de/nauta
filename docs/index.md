@@ -31,4 +31,4 @@ Change history is in [log.md](log.md).
 
 # Decision records
 
-* [Decisions](decisions/index.md) - Name, licence, credentials in form bodies, new music through MeTube, albums and playlists searched from the phone.
+* [Decisions](decisions/index.md) - Name, licence, credentials in form bodies, new music through MeTube, albums and playlists searched from the phone, no share links.
