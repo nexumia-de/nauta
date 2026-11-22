@@ -147,6 +147,14 @@ length and cover, with play/pause, previous, next and seeking.
 - Confirmed by the owner on the phone (2026-11-04): Phosh's lock screen
   shows the song and its controls work (nexumia-de/nauta#5).
 
+# Battery and CPU
+
+Not measured yet (#7): the method and the four runs (Wi-Fi and mobile
+data, "Original" and 192 kbit/s, screen off, one hour each) are in the
+[owner checks](owner-checks.md#battery-and-cpu-while-streaming-7). The
+results go into a table here; the "Away" default (192 kbit/s,
+`settings.py`) is revisited with them.
+
 # Not yet
 
 Gapless playback (#8) and crossfade (#35) need changes to
