@@ -383,6 +383,38 @@ def test_setup_with_the_proxy_basic_auth(app, demo, monkeypatch):
     window.destroy()
 
 
+def test_sign_in_with_an_api_key(app, demo, monkeypatch):
+    """The sign-in page's switch turns the password row into an API key
+    row; a wrong key says so, the right one signs in."""
+    from nauta.demo import API_KEY
+    from nauta.window import Window
+    monkeypatch.setattr(router.network, "current_ssids", lambda: None)
+    monkeypatch.setattr(connection_form.network, "current_ssids", lambda: None)
+    conn = connection.Connection(watch=False)
+    window = Window(app, conn)
+    toasts = []
+    monkeypatch.setattr(window, "toast", toasts.append)
+    page = visible(window)
+    page.form.remote.set_text(demo.url)
+    page.button.emit("clicked")
+    run_until(lambda: isinstance(visible(window), setup.SignInPage))
+    sign_in = visible(window)
+    assert sign_in.password.get_title() == "Password"
+    sign_in.use_key.set_active(True)
+    assert sign_in.password.get_title() == "API Key"
+    sign_in.user.set_text("robin")
+    sign_in.password.set_text("nds_wrong")
+    sign_in.button.emit("clicked")
+    run_until(lambda: sign_in.button.get_sensitive() and toasts)
+    assert toasts[-1] == "Wrong API key"
+    sign_in.password.set_text(API_KEY + "\n")
+    sign_in.button.emit("clicked")
+    run_until(lambda: window.main is not None)
+    assert keyring.lookup(keyring.API_KEY) == API_KEY
+    assert settings.Store().load().auth == connection.API_KEY
+    window.destroy()
+
+
 def test_playing_song_follows_the_route(app, demo, monkeypatch):
     """When the route changes (Wi-Fi gone), the media proxy cuts the
     running stream so the player reconnects through the new address."""
@@ -519,4 +551,18 @@ def test_find_albums_and_playlists(app, demo, metube, youtube_music, monkeypatch
     run_until(lambda: collection.stack.get_visible_child_name() == "songs")
     assert collection.get_title() == "Saltwater Letters"
     assert collection.url == "https://music.youtube.com/playlist?list=OLAK5uy_demoHarbour01"
+    window.nav.pop()
+
+    # A pasted song link is the only result, ready to download (#42).
+    page.search("https://music.youtube.com/watch?v=demo0000005&si=share")
+    assert visible(window) is page
+    run_until(lambda: page.stack.get_visible_child_name() == "results")
+    box = page.stack.get_child_by_name("results").get_child().get_child().get_child()
+    row = box.get_row_at_index(0)
+    assert box.get_row_at_index(1) is None
+    assert row.get_subtitle() == "https://music.youtube.com/watch?v=demo0000005"
+    row.download.emit("clicked")
+    run_until(lambda: row.download.get_icon_name() == "object-select-symbolic")
+    added = [b for m, p, b in metube.requests if p == "add"]
+    assert added[-1]["url"] == "https://music.youtube.com/watch?v=demo0000005"
     window.destroy()

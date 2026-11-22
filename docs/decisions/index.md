@@ -4,4 +4,5 @@
 * [AGPL-3.0 licence](license.md) - Like Cirro and Ephyra.
 * [Credentials in form bodies](form-post-credentials.md) - Token authentication in POST bodies, password in the keyring, local address only on listed home networks.
 * [New music through MeTube](metube-downloads.md) - Search and downloads run in the user's own MeTube, searched through its /browse.
+* [No share links](no-share-links.md) - Behind the owner's mutual TLS a Navidrome share link opens for nobody else, and making it open would need a public path past the client certificate.
 * [Albums and playlists searched from the phone](youtube-music-search.md) - MeTube's /browse can't list them, so the phone asks YouTube Music's web API for the list; songs and downloads stay with MeTube.

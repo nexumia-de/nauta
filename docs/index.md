@@ -12,6 +12,7 @@ Change history is in [log.md](log.md).
 # Plan
 
 * [Roadmap](roadmap.md) - Goals and exit criteria of the milestones; the work items are GitHub issues.
+* [Owner checks](owner-checks.md) - What only the owner can check or do (phone, own servers, toolkit tag), per closed issue.
 
 # Design
 
@@ -30,4 +31,4 @@ Change history is in [log.md](log.md).
 
 # Decision records
 
-* [Decisions](decisions/index.md) - Name, licence, credentials in form bodies, new music through MeTube, albums and playlists searched from the phone.
+* [Decisions](decisions/index.md) - Name, licence, credentials in form bodies, new music through MeTube, albums and playlists searched from the phone, no share links.

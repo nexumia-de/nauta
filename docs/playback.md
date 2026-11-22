@@ -147,10 +147,58 @@ length and cover, with play/pause, previous, next and seeking.
 - Confirmed by the owner on the phone (2026-11-04): Phosh's lock screen
   shows the song and its controls work (nexumia-de/nauta#5).
 
-# Not yet
+# Battery and CPU
 
-Gapless playback (#8) and crossfade (#35) need changes to
-phosh-toolkit's `media.Media` (one pipeline per song today).
+Not measured yet (#7): the method and the four runs (Wi-Fi and mobile
+data, "Original" and 192 kbit/s, screen off, one hour each) are in the
+[owner checks](owner-checks.md#battery-and-cpu-while-streaming-7). The
+results go into a table here; the "Away" default (192 kbit/s,
+`settings.py`) is revisited with them.
+
+# Gapless playback (#8)
+
+Not built yet: `Player._make_media()` makes one `phosh_toolkit.media.Media`
+per song, so the next song starts in a new pipeline after the old one
+reached EOS, with a short gap. The player is shared with Ephyra, so the
+change belongs in phosh-toolkit ([shared code](../../phosh-toolkit/docs/shared-connection.md)).
+The design, from the toolkit's `media.py` at `v0.5.0`:
+
+- **Toolkit** (`media.Media`): a property or method to set the next URI.
+  On playbin3's `about-to-finish` signal (emitted on a streaming
+  thread) the `Media` sets `uri` to the queued next URI, so the same
+  pipeline goes on without EOS. When the new stream starts
+  (`STREAM_START` on the bus, main thread) it emits a signal such as
+  `next-started` and resets `timestamp`/`duration`; without a queued URI
+  it behaves as today (EOS, `ended`).
+- **Nauta** (`player.py`): after a song starts, hand the proxy URL of
+  the song that `next()` would pick (repeat one, repeat all, shuffle
+  and queue edits included) to the `Media`, and hand it again whenever
+  the queue or the modes change. On `next-started`: scrobble the old
+  song as played, move the queue position, reset `_scrobbled`, notify
+  `song` (MPRIS, Now Playing, the player bar). Quality changes with the
+  route already restart the song; they would clear the queued URI.
+- **Tests**: two WAV tones from the demo server through the proxy;
+  the second follows without `ended` going true, the queue position
+  moves, both are scrobbled.
+
+What only the owner can do is in the
+[owner checks](owner-checks.md#gapless-playback-8).
+
+# Not planned
+
+Crossfade, equalizer and playback speed (#35, closed 2026-11-22):
+
+- **Crossfade** needs two pipelines playing at once, on top of gapless
+  playback, which itself waits for the toolkit (#8). Gapless is what
+  live albums and mixes need; crossfading them would blur exactly
+  those transitions.
+- **Equalizer**: sound shaping belongs to the system, where it applies
+  to every app and to the headphones in use (PipeWire filters such as
+  EasyEffects), not to one player.
+- **Speed**: meant for podcasts and audiobooks; for music it changes
+  the song.
+
+A new issue if one of them becomes a need.
 
 # Verified (2026-11-04, cloud container, GStreamer 1.24)
 

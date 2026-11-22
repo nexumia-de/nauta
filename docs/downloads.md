@@ -159,8 +159,19 @@ the link, at most 200 (`playlist_item_limit`). From there you can:
 
 Pasting a link to an album or playlist into the search field
 (`music.youtube.com/browse/MPREb_…`, `…/playlist?list=…`, or a
-`watch?…&list=…` link) opens its page directly
+`watch?…&list=…` or `youtu.be/…?list=…` link) opens its page directly
 (`metube.collection_link`).
+
+Pasting a link to a single song or video shows it as the only result,
+titled "Pasted Link", with its download button (`metube.song_link`,
+#42): `youtu.be/<id>` (YouTube's Share button), `…/watch?v=<id>` and
+`…/shorts/<id>` on `music.youtube.com`, `www.youtube.com`,
+`youtube.com` and `m.youtube.com`. Share parameters (`si`, `t`,
+`feature`) are dropped; the download gets the plain watch URL, which
+MeTube's `/add` takes as it is. MeTube's `/browse` refuses single
+videos, so the title is known only once MeTube reports the download.
+A `watch` link with `list=RD…` is a song played from a radio mix: the
+song is meant, not the endless mix, so it counts as a single song.
 
 # Downloading
 
@@ -211,12 +222,26 @@ Facts as of MeTube `7e73766`[^metube]:
 - Artist and album in YouTube Music song results: yt-dlp's flat search
   entries have the title only; full extraction per result would be
   much slower.
-- Searching artists, and YouTube's own playlists (not YouTube Music's):
-  same `/browse` limit as albums, not built yet.
-- Covers of albums and playlists in the results (more image hosts).
+- Searching artists, YouTube's own playlists (not YouTube Music's) and
+  covers of albums and playlists in the results: not planned (#23,
+  closed 2026-11-22). Each needs more requests from the phone to
+  YouTube's web API or to further image hosts
+  (`lh3.googleusercontent.com`, `i.ytimg.com`), beyond what the
+  [decision](decisions/youtube-music-search.md) allows, and songs,
+  albums and playlists already cover finding music. A new issue if the
+  owner wants one of them.
 - Playlists with more than 200 songs: the page lists the first 200;
   "Download All" still gets all of them.
 - MeTube's Socket.IO events instead of polling.
+
+# Verified on the phone (2026-11-06, owner)
+
+The owner reported that searching YouTube Music works on the phone
+against the real YouTube Music and their MeTube (#22). Pasting a link
+did not; fixed for single songs in #42 ([search](#search)). The rest of
+the phone check (album and playlist pages, Download All, track numbers,
+MeTube's playlist folder) is in the
+[owner checks](owner-checks.md#album-and-playlist-search-on-the-phone-22).
 
 # Verified (2026-11-04, cloud container)
 

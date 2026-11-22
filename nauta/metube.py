@@ -13,6 +13,7 @@ or a "ytsearchN:" prefix is one. Albums and playlists are found on the
 phone (nauta.ytmusic); /browse lists their songs and /add downloads all
 of them at once."""
 import json
+import re
 from urllib.parse import parse_qs, quote_plus, urlsplit
 
 from phosh_toolkit.http import SERVER, Client, HttpError
@@ -32,6 +33,10 @@ KINDS = ((SONGS, "Songs"), (ALBUMS, "Albums"), (PLAYLISTS, "Playlists"))
 COLLECTION_LIMIT = 200
 YOUTUBE_HOSTS = ("music.youtube.com", "www.youtube.com", "youtube.com",
                  "m.youtube.com")
+# YouTube's short links (the Share button): youtu.be/<video id>.
+SHORT_HOST = "youtu.be"
+# A YouTube video id: 11 characters of the URL-safe base64 alphabet.
+VIDEO_ID = re.compile(r"[A-Za-z0-9_-]{11}")
 # MeTube's /browse answer when a search finds nothing.
 NO_ENTRIES = "No entries found at this URL."
 # Audio formats Nauta offers (MeTube's format catalog, type "audio").
@@ -51,23 +56,62 @@ def search_url(query, source=YOUTUBE_MUSIC, count=RESULTS):
     return f"https://music.youtube.com/search?q={quote_plus(query)}#songs"
 
 
+def _youtube_link(text):
+    """(site, path, query, short) of a pasted YouTube (Music) link, site being
+    "https://music.youtube.com" or "https://www.youtube.com", short true
+    for youtu.be; None for anything else."""
+    text = text.strip()
+    if " " in text or "://" not in text:
+        return None
+    parts = urlsplit(text)
+    if parts.scheme not in ("http", "https") or \
+            parts.hostname not in YOUTUBE_HOSTS + (SHORT_HOST,):
+        return None
+    site = "https://music.youtube.com" if parts.hostname == "music.youtube.com" \
+        else "https://www.youtube.com"
+    return site, parts.path, parse_qs(parts.query), parts.hostname == SHORT_HOST
+
+
+def _is_mix(playlist):
+    """YouTube's endless radio mixes (list=RD…), which a watch link of a
+    song played from a radio carries; the song is meant, not the mix."""
+    return playlist.startswith("RD")
+
+
 def collection_link(text):
     """The album or playlist a pasted YouTube (Music) link points to, as a
     URL for /browse and /add; "" for anything else."""
-    text = text.strip()
-    if " " in text or "://" not in text:
+    link = _youtube_link(text)
+    if link is None:
         return ""
-    parts = urlsplit(text)
-    if parts.scheme not in ("http", "https") or parts.hostname not in YOUTUBE_HOSTS:
-        return ""
-    host = "https://music.youtube.com" if parts.hostname == "music.youtube.com" \
-        else "https://www.youtube.com"
-    playlist = (parse_qs(parts.query).get("list") or [""])[0]
-    if playlist and parts.path in ("/playlist", "/watch"):
-        return f"{host}/playlist?list={quote_plus(playlist)}"
-    if parts.path.startswith("/browse/MPREb_"):
-        return f"{host}{parts.path}"
+    site, path, query, short = link
+    playlist = (query.get("list") or [""])[0]
+    if playlist and not _is_mix(playlist) and (short or path in ("/playlist", "/watch")):
+        return f"{site}/playlist?list={quote_plus(playlist)}"
+    if not short and path.startswith("/browse/MPREb_"):
+        return f"{site}{path}"
     return ""
+
+
+def song_link(text):
+    """The single song or video a pasted link points to, as a watch URL for
+    /add (youtu.be/<id>, …/watch?v=<id>, …/shorts/<id>, share parameters
+    dropped); "" for anything else, collections included."""
+    link = _youtube_link(text)
+    if link is None or collection_link(text):
+        return ""
+    site, path, query, short = link
+    if short:
+        vid = path.strip("/")
+    elif path == "/watch":
+        vid = (query.get("v") or [""])[0]
+    elif path.startswith("/shorts/"):
+        vid = path.removeprefix("/shorts/").strip("/")
+    else:
+        return ""
+    if not VIDEO_ID.fullmatch(vid):
+        return ""
+    return f"{site}/watch?v={vid}"
 
 
 def video_id(url):

@@ -31,6 +31,9 @@ class Account:
     # proxy login (toolkit ConnectionForm, docs/connection.md).
     certificate_hosts: list = field(default_factory=list)
     user_name: str = ""
+    # How the user signed in: "password" or "api-key" (the secret itself
+    # is in the keyring, nauta.keyring).
+    auth: str = "password"
     # From the server's answer, for the preferences ("navidrome 0.64.2").
     server_type: str = ""
     server_version: str = ""

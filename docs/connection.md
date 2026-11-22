@@ -138,11 +138,34 @@ them, streams too
 - Every request is a `POST` with `u`, `t`, `s` in the form body and
   a fresh salt each time; the password itself never leaves the phone
   ([decision](decisions/form-post-credentials.md)).
-- An error 40/41/44 signs out: the password is forgotten and the setup
-  page shows, with a toast.
+- An error 40/41/44 signs out: the password (or API key) is forgotten
+  and the setup page shows, with a toast.
 - The account file `$XDG_CONFIG_HOME/nauta/account.json` holds
-  addresses, home networks, user name, server type and version,
-  qualities and style; never the password.
+  addresses, home networks, user name, how the user signed in (`auth`:
+  `password` or `api-key`), server type and version, qualities and
+  style; never the password or the key.
+
+## Sign in with an API key (#12)
+
+The sign-in page's switch "Sign In With an API Key" turns the password
+row into an "API Key" row. Navidrome makes keys per player under
+"Players & API keys" in its web UI; they start with `nds_`
+([Subsonic API](subsonic-api.md#authentication)).
+
+- The probe must list the extension `apiKeyAuthentication`, otherwise
+  the page says the server doesn't accept API keys.
+- Every request then carries only `apiKey` in the form body, never with
+  `u`, `t` or `s` (Navidrome answers error 43 to the mix).
+- The key does not name its user, so the page still asks for the user
+  name (shown in the preferences, used to tell own playlists from
+  others'). `getUser` with that name checks it: Navidrome answers only
+  for the signed-in user, so a key of another user is refused with
+  "This API key belongs to another user".
+- The key is kept in the keyring (`kind` = `api-key`) instead of the
+  password; signing in either way forgets the other secret. Pasted
+  spaces and line breaks around the key are dropped.
+- Revoking the key in Navidrome gives error 44 on the next call, which
+  signs out like a changed password.
 
 # Verified (2026-11-04, cloud container)
 
@@ -152,3 +175,11 @@ without the certificate, works with PKCS #12; credentials only in the
 body with a fresh salt; the strict route at home, away, without
 NetworkManager and without a list; a wrong password signs out. Not yet
 against a real Navidrome or the owner's proxy (M1).
+
+2026-11-22: `tests/test_api.py` and `tests/test_ui.py` sign in with an
+API key against the demo server, which checks keys as Navidrome's
+`authenticateAPIKey` does at `7c1e68a` (errors 43, 44; `getUser` error
+50): only `apiKey` in the body, the key in the keyring and not in the
+settings file, a wrong key, a key of another user, a server without the
+extension, switching back to the password. Not yet against the owner's
+Navidrome ([owner checks](owner-checks.md#api-key-sign-in-12)).

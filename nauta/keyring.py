@@ -8,9 +8,13 @@ from phosh_toolkit.proxy_login import COOKIES, CREDENTIALS
 # Subsonic's token authentication needs the password itself
 # (docs/connection.md).
 PASSWORD = "password"
+# Or an API key instead of the password (OpenSubsonic
+# apiKeyAuthentication); only one of the two is kept.
+API_KEY = "api-key"
 
 KEYRING = Keyring("de.nexumia.Nauta",
                   {PASSWORD: "Nauta server password",
+                   API_KEY: "Nauta server API key",
                    CERTIFICATE_PASSWORD: "Nauta client certificate password",
                    COOKIES: "Nauta proxy login",
                    CREDENTIALS: "Nauta proxy user name and password"},

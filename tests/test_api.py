@@ -12,7 +12,7 @@ from phosh_toolkit.route import LOCAL, REMOTE
 from conftest import P12_PASSWORD, run_until
 from nauta import USER_AGENT, connection, keyring, settings
 from nauta.api import Subsonic, token
-from nauta.demo import PASSWORD
+from nauta.demo import API_KEY, PASSWORD
 
 
 def api_for(url, http=None, password=PASSWORD):
@@ -139,6 +139,64 @@ def test_sign_in_keeps_the_password_in_the_keyring(demo, monkeypatch):
     assert f'"{PASSWORD}"' not in conn.store.path.read_text()
     again = connection.Connection(conn.store, watch=False)
     assert again.signed_in and again.account.server_type == "navidrome"
+
+
+def _sign_in_with_key(conn, url, user="robin", key=API_KEY):
+    done = []
+    connection.sign_in(conn, url, user, key, lambda r, e: done.append(e),
+                       connection.API_KEY)
+    run_until(lambda: done)
+    return done[0]
+
+
+def test_api_key_goes_alone_in_the_body(demo):
+    api = Subsonic()
+    api.base_url, api.user, api.api_key = demo.url, "robin", API_KEY
+    api.ping()
+    form = demo.requests[-1][2]
+    assert form["apiKey"] == API_KEY and form["c"] == "Nauta"
+    assert not {"u", "p", "t", "s"} & set(form)
+
+
+def test_sign_in_with_an_api_key(demo, monkeypatch):
+    keyring.store(keyring.PASSWORD, "old password")
+    conn = _connection("", demo.url, [], None, monkeypatch)
+    assert _sign_in_with_key(conn, demo.url) is None and conn.signed_in
+    # Only the key is kept, in the keyring, never in the settings file.
+    assert keyring.lookup(keyring.API_KEY) == API_KEY
+    assert keyring.lookup(keyring.PASSWORD) is None
+    assert API_KEY not in conn.store.path.read_text()
+    again = connection.Connection(conn.store, watch=False)
+    assert again.signed_in and again.account.auth == connection.API_KEY
+    again.api.base_url = demo.url
+    assert again.api.artists()
+    assert demo.requests[-1][2]["apiKey"] == API_KEY
+    again.sign_out()
+    assert keyring.lookup(keyring.API_KEY) is None and not again.signed_in
+
+
+def test_api_key_errors(demo, monkeypatch):
+    conn = _connection("", demo.url, [], None, monkeypatch)
+    error = _sign_in_with_key(conn, demo.url, key="nds_wrong")
+    assert error.kind == AUTH and not conn.signed_in
+    # A valid key under another user name: getUser refuses (error 50).
+    error = _sign_in_with_key(conn, demo.url, user="sam")
+    assert error.kind == SERVER and "another user" in str(error)
+    assert not conn.signed_in and keyring.lookup(keyring.API_KEY) is None
+    # A server without apiKeyAuthentication.
+    monkeypatch.setattr("nauta.demo.EXTENSIONS", ("formPost",))
+    error = _sign_in_with_key(conn, demo.url)
+    assert error.kind == SERVER and "API keys" in str(error)
+
+
+def test_password_after_api_key_forgets_the_key(demo, monkeypatch):
+    conn = _connection("", demo.url, [], None, monkeypatch)
+    assert _sign_in_with_key(conn, demo.url) is None
+    done = []
+    connection.sign_in(conn, demo.url, "robin", PASSWORD, lambda r, e: done.append(e))
+    run_until(lambda: done)
+    assert done[0] is None and conn.account.auth == connection.PASSWORD
+    assert keyring.lookup(keyring.API_KEY) is None and conn.api.api_key == ""
 
 
 def test_rejected_password_signs_out(demo, monkeypatch):

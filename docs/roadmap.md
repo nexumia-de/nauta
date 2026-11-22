@@ -53,7 +53,10 @@ Songs; playlists made, renamed, reordered and deleted in the app; the
 queue edited on Now Playing with repeat, shuffle and a sleep timer;
 radio, popular songs and similar artists; synced lyrics; volume
 normalisation; checked on the phone against the owner's Navidrome.
-Later: offline albums, crossfade and equalizer, share links.
+Not planned: share links (#36,
+[decision](decisions/no-share-links.md)); offline albums (#34), see
+[library features](library.md#why); crossfade, equalizer and speed
+(#35), see [playback](playback.md#not-planned).
 
 # Risks
 
