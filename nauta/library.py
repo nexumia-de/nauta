@@ -241,6 +241,7 @@ class MainPage(Adw.NavigationPage):
         menu = Gio.Menu()
         menu.append("Find New Music", "app.find-music")
         menu.append("Preferences", "app.preferences")
+        menu.append("Report a Problem…", "app.report-problem")
         menu.append(f"About {NAME}", "app.about")
         # Closing the window keeps the music playing; this ends both.
         menu.append("Quit", "app.quit")

@@ -93,6 +93,14 @@ MeTube, in Find New Music on YouTube Music:
   [finding new music](downloads.md#search) describes, note the
   difference there; the parser is `nauta/ytmusic.py`.
 
+# Adopt phosh-toolkit v0.8.0
+
+Done on 2026-11-22: pinned to `v0.8.0` (commit `3ec15b8`), which adds
+"Report a Problem…". Nothing in the required checks changes.
+
+- [ ] On the phone: main menu, Report a Problem…, with and without a
+  GitHub token (Open on GitHub opens the filled-in form).
+
 # Adopt phosh-toolkit v0.7.0
 
 Done on 2026-11-22: the manifest and the three reusable workflows are

@@ -9,8 +9,8 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
-from nauta import (APP_ID, NAME, NIGHTLY, REPO_URL, SUPPORT_URL,  # noqa: E402
-                   VERSION_LABEL)
+from nauta import (APP_ID, NAME, NIGHTLY, REPO, REPO_URL, SUPPORT_URL,  # noqa: E402
+                   VERSION, VERSION_LABEL)
 
 log = logging.getLogger("nauta")
 
@@ -112,8 +112,14 @@ class Application(Adw.Application):
             from nauta.downloads import Downloads
             self.connection = Connection()
             self.downloads = Downloads()
-        from phosh_toolkit import style
+        from phosh_toolkit import feedback, style
         style.apply(self.connection.account.style)
+        # Report a Problem: no `client`, the connection's own one carries
+        # the music server's certificate and proxy login, which must never
+        # go to api.github.com.
+        from nauta.keyring import KEYRING
+        feedback.install(self, repo=REPO, app_name=NAME,
+                         version=VERSION_LABEL, keyring=KEYRING)
 
     def do_activate(self):
         from nauta.window import Window
@@ -196,13 +202,14 @@ class Application(Adw.Application):
             PreferencesDialog(window).present(window)
 
     def _on_about(self, *_):
+        from phosh_toolkit import feedback
         dialog = Adw.AboutDialog(
             application_name=NAME,
             application_icon=APP_ID,
             version=VERSION_LABEL,
             developer_name="suitably",
             website=REPO_URL,
-            issue_url=f"{REPO_URL}/issues",
+            issue_url=feedback.issue_url(REPO, VERSION),
             license_type=Gtk.License.AGPL_3_0,
             comments="Listen to your Navidrome library on a Phosh phone. Not "
                      "affiliated with the Navidrome project.",
