@@ -229,6 +229,15 @@ Facts as of MeTube `7e73766`[^metube]:
   "Download All" still gets all of them.
 - MeTube's Socket.IO events instead of polling.
 
+# Verified on the phone (2026-11-06, owner)
+
+The owner reported that searching YouTube Music works on the phone
+against the real YouTube Music and their MeTube (#22). Pasting a link
+did not; fixed for single songs in #42 ([search](#search)). The rest of
+the phone check (album and playlist pages, Download All, track numbers,
+MeTube's playlist folder) is in the
+[owner checks](owner-checks.md#album-and-playlist-search-on-the-phone-22).
+
 # Verified (2026-11-04, cloud container)
 
 `tests/test_downloads.py`, `tests/test_ui.py::test_find_and_download_new_music`

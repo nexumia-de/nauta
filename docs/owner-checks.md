@@ -74,3 +74,21 @@ Tested with the MeTube stand-in only.
 - [ ] On the phone, paste a `youtu.be` link and a YouTube Music song
   link into Find New Music: one "Pasted Link" row each; Download puts
   the song into MeTube and later into Navidrome.
+
+# Album and playlist search on the phone (#22)
+
+Song search was confirmed on the phone on 2026-11-06. With the owner's
+MeTube, in Find New Music on YouTube Music:
+
+- [ ] Albums and Playlists filters: results with title and the
+  "Album • Artist • Year" line. Note the system language (`hl`).
+- [ ] Opening an album and a playlist lists its songs.
+- [ ] "Download All" on an album: every song queued in MeTube, track
+  numbers set, the album appears in Navidrome. Note the folder MeTube
+  used (`OUTPUT_TEMPLATE_PLAYLIST`).
+- [ ] Downloading a single song from an album page.
+- [ ] Pasting an album link (`…/browse/MPREb_…`) and a playlist link
+  opens the album or playlist page.
+- [ ] If YouTube Music answers differently than
+  [finding new music](downloads.md#search) describes, note the
+  difference there; the parser is `nauta/ytmusic.py`.
