@@ -551,4 +551,18 @@ def test_find_albums_and_playlists(app, demo, metube, youtube_music, monkeypatch
     run_until(lambda: collection.stack.get_visible_child_name() == "songs")
     assert collection.get_title() == "Saltwater Letters"
     assert collection.url == "https://music.youtube.com/playlist?list=OLAK5uy_demoHarbour01"
+    window.nav.pop()
+
+    # A pasted song link is the only result, ready to download (#42).
+    page.search("https://music.youtube.com/watch?v=demo0000005&si=share")
+    assert visible(window) is page
+    run_until(lambda: page.stack.get_visible_child_name() == "results")
+    box = page.stack.get_child_by_name("results").get_child().get_child().get_child()
+    row = box.get_row_at_index(0)
+    assert box.get_row_at_index(1) is None
+    assert row.get_subtitle() == "https://music.youtube.com/watch?v=demo0000005"
+    row.download.emit("clicked")
+    run_until(lambda: row.download.get_icon_name() == "object-select-symbolic")
+    added = [b for m, p, b in metube.requests if p == "add"]
+    assert added[-1]["url"] == "https://music.youtube.com/watch?v=demo0000005"
     window.destroy()

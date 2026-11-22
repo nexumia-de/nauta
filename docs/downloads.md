@@ -159,8 +159,19 @@ the link, at most 200 (`playlist_item_limit`). From there you can:
 
 Pasting a link to an album or playlist into the search field
 (`music.youtube.com/browse/MPREb_…`, `…/playlist?list=…`, or a
-`watch?…&list=…` link) opens its page directly
+`watch?…&list=…` or `youtu.be/…?list=…` link) opens its page directly
 (`metube.collection_link`).
+
+Pasting a link to a single song or video shows it as the only result,
+titled "Pasted Link", with its download button (`metube.song_link`,
+#42): `youtu.be/<id>` (YouTube's Share button), `…/watch?v=<id>` and
+`…/shorts/<id>` on `music.youtube.com`, `www.youtube.com`,
+`youtube.com` and `m.youtube.com`. Share parameters (`si`, `t`,
+`feature`) are dropped; the download gets the plain watch URL, which
+MeTube's `/add` takes as it is. MeTube's `/browse` refuses single
+videos, so the title is known only once MeTube reports the download.
+A `watch` link with `list=RD…` is a song played from a radio mix: the
+song is meant, not the endless mix, so it counts as a single song.
 
 # Downloading
 

@@ -63,3 +63,14 @@ Navidrome.
   With an API Key", enter the user name and the key: the library shows.
 - [ ] Restart Jukebox: still signed in. Revoke the key in Navidrome:
   the next action shows the setup page.
+
+# Pasted YouTube links (#42)
+
+Tested with the MeTube stand-in only.
+
+- [ ] Which link the "does nothing useful" report came from (Share
+  button = `youtu.be/…`?); if it was another form, note it in
+  [finding new music](downloads.md#search) and the tests.
+- [ ] On the phone, paste a `youtu.be` link and a YouTube Music song
+  link into Find New Music: one "Pasted Link" row each; Download puts
+  the song into MeTube and later into Navidrome.

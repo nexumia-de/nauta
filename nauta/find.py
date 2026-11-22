@@ -55,7 +55,8 @@ def song_row(window, result):
     title = result.get("title") or result.get("url") or ""
     duration = result.get("duration")
     row = Adw.ActionRow(title=widgets.escape(title),
-                        subtitle=text.duration(duration) if duration else "")
+                        subtitle=text.duration(duration) if duration
+                        else widgets.escape(result.get("subtitle") or ""))
     row.set_title_lines(2)
     row.add_prefix(Gtk.Image(icon_name="audio-x-generic-symbolic"))
     button = _icon_button("folder-download-symbolic", f"Download {title}")
@@ -285,6 +286,14 @@ class FindMusicPage(Adw.NavigationPage):
         if link:
             # A pasted album or playlist: straight to its songs.
             self.window.nav.push(CollectionPage(self.window, {"url": link}))
+            return
+        link = metube.song_link(query)
+        if link:
+            # A pasted song or video: MeTube can't list a single video
+            # (/browse), so it shows as the only result, ready to download.
+            self._query = None
+            self._on_results(None, [{"url": link, "title": "Pasted Link",
+                                     "subtitle": link}], None)
             return
         key = (query, self.source, self.kind)
         self._query = key

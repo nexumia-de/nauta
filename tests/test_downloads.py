@@ -10,6 +10,7 @@ from phosh_toolkit.route import LOCAL, REMOTE
 from conftest import P12_PASSWORD, run_until
 from nauta import USER_AGENT, downloads, keyring, settings
 from nauta.metube import (SONGS, YOUTUBE, YOUTUBE_MUSIC, MeTube, collection_link, matches,
+                          song_link,
                           search_url, video_id)
 from nauta.ytmusic import ALBUMS, PLAYLISTS, YouTubeMusic, collection_url, parse
 
@@ -30,13 +31,44 @@ def test_collection_links():
         "https://music.youtube.com/playlist?list=OLAK5uy_x"
     assert collection_link("https://youtube.com/watch?v=abc&list=PLx") == \
         "https://www.youtube.com/playlist?list=PLx"
+    assert collection_link("https://youtu.be/dQw4w9WgXcQ?list=PLx&si=y") == \
+        "https://www.youtube.com/playlist?list=PLx"
     for text in ("harbour lights", "https://music.youtube.com/watch?v=abc",
-                 "https://example.com/playlist?list=PLx", "ytsearch5:a"):
+                 "https://example.com/playlist?list=PLx", "ytsearch5:a",
+                 "https://music.youtube.com/watch?v=dQw4w9WgXcQ&list=RDAMVMdQw4w9WgXcQ"):
         assert collection_link(text) == ""
     assert collection_url("MPREb_abc") == album
     assert collection_url("VLPLx") == "https://music.youtube.com/playlist?list=PLx"
     assert collection_url("UCartist") == ""
     assert parse({}, ALBUMS) == [] and parse({"contents": None}, ALBUMS) == []
+
+
+def test_song_links():
+    """Single songs and videos in every form YouTube hands out, share
+    parameters (si, t, feature) dropped (#42)."""
+    video = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    music = "https://music.youtube.com/watch?v=dQw4w9WgXcQ"
+    for text, link in (
+            ("https://youtu.be/dQw4w9WgXcQ", video),
+            (" https://youtu.be/dQw4w9WgXcQ?si=AbCdEf12 ", video),
+            ("https://youtu.be/dQw4w9WgXcQ?t=42", video),
+            ("https://www.youtube.com/watch?v=dQw4w9WgXcQ&si=x", video),
+            ("https://youtube.com/watch?v=dQw4w9WgXcQ&feature=share", video),
+            ("https://m.youtube.com/watch?v=dQw4w9WgXcQ", video),
+            ("https://www.youtube.com/shorts/dQw4w9WgXcQ?si=x", video),
+            ("http://youtube.com/shorts/dQw4w9WgXcQ", video),
+            ("https://music.youtube.com/watch?v=dQw4w9WgXcQ&si=x", music),
+            # A song played from a radio mix: the song, not the endless mix.
+            ("https://music.youtube.com/watch?v=dQw4w9WgXcQ&list=RDAMVMdQw4w9WgXcQ", music)):
+        assert song_link(text) == link, text
+    for text in ("harbour lights", "https://youtu.be/", "https://youtu.be/short",
+                 "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLx",
+                 "https://youtu.be/dQw4w9WgXcQ?list=PLx",
+                 "https://music.youtube.com/browse/MPREb_abc",
+                 "https://example.com/watch?v=dQw4w9WgXcQ",
+                 "https://www.youtube.com/channel/UCabcdefghijk",
+                 "https://www.youtube.com/watch?v=bad id here"):
+        assert song_link(text) == "", text
 
 
 def test_youtube_music_search(youtube_music):
