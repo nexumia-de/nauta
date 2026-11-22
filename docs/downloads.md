@@ -222,9 +222,14 @@ Facts as of MeTube `7e73766`[^metube]:
 - Artist and album in YouTube Music song results: yt-dlp's flat search
   entries have the title only; full extraction per result would be
   much slower.
-- Searching artists, and YouTube's own playlists (not YouTube Music's):
-  same `/browse` limit as albums, not built yet.
-- Covers of albums and playlists in the results (more image hosts).
+- Searching artists, YouTube's own playlists (not YouTube Music's) and
+  covers of albums and playlists in the results: not planned (#23,
+  closed 2026-11-22). Each needs more requests from the phone to
+  YouTube's web API or to further image hosts
+  (`lh3.googleusercontent.com`, `i.ytimg.com`), beyond what the
+  [decision](decisions/youtube-music-search.md) allows, and songs,
+  albums and playlists already cover finding music. A new issue if the
+  owner wants one of them.
 - Playlists with more than 200 songs: the page lists the first 200;
   "Download All" still gets all of them.
 - MeTube's Socket.IO events instead of polling.
