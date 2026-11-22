@@ -2,6 +2,7 @@
 
 ## 2026-11-22
 * **Creation**: [Owner checks](owner-checks.md): what only the owner can do, per closed issue. Battery and CPU while streaming (#7) needs the phone; the method is there and [playback](playback.md#battery-and-cpu) waits for the results.
+* **Update**: [Connection](connection.md#sign-in-with-an-api-key-12): sign in with an API key instead of the password (#12). The key goes alone in the form body (`apiKey`), is kept in the keyring instead of the password, and `getUser` checks it belongs to the user name typed. Navidrome facts from `7c1e68a` in [Subsonic API](subsonic-api.md#authentication); the demo server checks keys the same way. Real-server check in [owner checks](owner-checks.md#api-key-sign-in-12).
 * **Update**: [Playback](playback.md#gapless-playback-8): the design for gapless playback (#8), toolkit `Media` with a next URI on `about-to-finish` plus Nauta's queue handing it the next song; the toolkit part is an [owner check](owner-checks.md#gapless-playback-8).
 
 ## 2026-11-17

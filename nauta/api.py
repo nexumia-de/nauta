@@ -18,9 +18,17 @@ from nauta import CLIENT_NAME, USER_AGENT
 API_VERSION = "1.16.1"
 # Extensions Nauta can't work without.
 REQUIRED_EXTENSIONS = ("formPost",)
+# The extension that lets a client sign in with an API key instead of
+# user name and password (docs/subsonic-api.md).
+API_KEY_EXTENSION = "apiKeyAuthentication"
 # Subsonic error codes that mean "sign in again" (40 wrong credentials,
 # 41 token auth not supported for LDAP users, 44 invalid API key).
 AUTH_ERRORS = (40, 41, 44)
+
+
+def extensions(answer):
+    """Names of the OpenSubsonic extensions in a probe answer."""
+    return {e.get("name") for e in answer.get("openSubsonicExtensions") or []}
 
 
 def token(password, salt):
@@ -34,14 +42,21 @@ class Subsonic:
         self.base_url = ""      # set by Connection for the current route
         self.user = ""
         self.password = ""
+        # Set instead of the password when signed in with an API key;
+        # the key goes alone, without u, t or s (error 43 otherwise).
+        self.api_key = ""
 
     # --- plumbing -----------------------------------------------------
 
     def credentials(self):
-        """Form fields that authenticate a request, with a fresh salt."""
+        """Form fields that authenticate a request: the API key, or user
+        name and token with a fresh salt."""
+        common = {"v": API_VERSION, "c": CLIENT_NAME, "f": "json"}
+        if self.api_key:
+            return {"apiKey": self.api_key, **common}
         salt = secrets.token_hex(8)
         return {"u": self.user, "t": token(self.password, salt), "s": salt,
-                "v": API_VERSION, "c": CLIENT_NAME, "f": "json"}
+                **common}
 
     def form(self, **params):
         """The encoded form body: parameters and credentials. Lists become
@@ -81,14 +96,20 @@ class Subsonic:
             {"Accept": "application/json"}, body=b"f=json",
             content_type="application/x-www-form-urlencoded", timeout=timeout)
         answer = _answer(response.body, allow_failed=True)
-        names = {e.get("name") for e in answer.get("openSubsonicExtensions") or []}
-        if not answer.get("openSubsonic") or not set(REQUIRED_EXTENSIONS) <= names:
+        if not answer.get("openSubsonic") or \
+                not set(REQUIRED_EXTENSIONS) <= extensions(answer):
             raise HttpError(SERVER, "Jukebox needs an OpenSubsonic server such as "
                                     "Navidrome")
         return answer
 
     def ping(self, base=None):
         return self.call("ping", base)
+
+    def user_info(self, user, base=None):
+        """getUser: the signed-in user's details; Navidrome refuses any
+        other name (error 50), which tells whether an API key belongs to
+        `user`."""
+        return self.call("getUser", base, username=user).get("user") or {}
 
     # --- library ------------------------------------------------------
 

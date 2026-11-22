@@ -51,3 +51,15 @@ design is in [playback](playback.md#gapless-playback-8).
   `player.py` as described in playback, with the test described there.
 - [ ] On the phone: a live album or DJ mix plays through without a gap
   at the song changes, at home and away.
+
+# API key sign-in (#12)
+
+Built and tested against the demo server; not tried against a real
+Navidrome.
+
+- [ ] In Navidrome's web UI, "Players & API keys": generate a key for a
+  player and copy it.
+- [ ] In Jukebox, sign out (Preferences), connect, switch on "Sign In
+  With an API Key", enter the user name and the key: the library shows.
+- [ ] Restart Jukebox: still signed in. Revoke the key in Navidrome:
+  the next action shows the setup page.

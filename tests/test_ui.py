@@ -383,6 +383,38 @@ def test_setup_with_the_proxy_basic_auth(app, demo, monkeypatch):
     window.destroy()
 
 
+def test_sign_in_with_an_api_key(app, demo, monkeypatch):
+    """The sign-in page's switch turns the password row into an API key
+    row; a wrong key says so, the right one signs in."""
+    from nauta.demo import API_KEY
+    from nauta.window import Window
+    monkeypatch.setattr(router.network, "current_ssids", lambda: None)
+    monkeypatch.setattr(connection_form.network, "current_ssids", lambda: None)
+    conn = connection.Connection(watch=False)
+    window = Window(app, conn)
+    toasts = []
+    monkeypatch.setattr(window, "toast", toasts.append)
+    page = visible(window)
+    page.form.remote.set_text(demo.url)
+    page.button.emit("clicked")
+    run_until(lambda: isinstance(visible(window), setup.SignInPage))
+    sign_in = visible(window)
+    assert sign_in.password.get_title() == "Password"
+    sign_in.use_key.set_active(True)
+    assert sign_in.password.get_title() == "API Key"
+    sign_in.user.set_text("robin")
+    sign_in.password.set_text("nds_wrong")
+    sign_in.button.emit("clicked")
+    run_until(lambda: sign_in.button.get_sensitive() and toasts)
+    assert toasts[-1] == "Wrong API key"
+    sign_in.password.set_text(API_KEY + "\n")
+    sign_in.button.emit("clicked")
+    run_until(lambda: window.main is not None)
+    assert keyring.lookup(keyring.API_KEY) == API_KEY
+    assert settings.Store().load().auth == connection.API_KEY
+    window.destroy()
+
+
 def test_playing_song_follows_the_route(app, demo, monkeypatch):
     """When the route changes (Wi-Fi gone), the media proxy cuts the
     running stream so the player reconnects through the new address."""

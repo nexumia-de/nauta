@@ -22,6 +22,11 @@ from pathlib import Path
 from urllib.parse import parse_qsl, urlsplit
 
 PASSWORD = "demo"
+# An API key of the demo user's player (Navidrome's keys start with nds_).
+API_KEY = "nds_demo"
+# Fields Navidrome refuses next to apiKey (error 43; server/subsonic/
+# middlewares.go, apiKeyConflicts).
+API_KEY_CONFLICTS = ("u", "p", "t", "s", "jwt")
 EXTENSIONS = ("formPost", "transcodeOffset", "songLyrics", "apiKeyAuthentication")
 # Seconds of audio served for every song, whatever its listed duration.
 AUDIO_SECONDS = 20
@@ -92,12 +97,25 @@ class DemoServer:
         if method == "getOpenSubsonicExtensions":
             return self.response(openSubsonicExtensions=[
                 {"name": name, "versions": [1]} for name in EXTENSIONS])
-        user, token, salt = form.get("u"), form.get("t"), form.get("s")
-        expected = hashlib.md5((PASSWORD + (salt or "")).encode()).hexdigest()
-        if user != lib["user"] or token != expected:
-            return self.error(40, "Wrong username or password")
+        if "apiKey" in form:
+            if any(name in form for name in API_KEY_CONFLICTS):
+                return self.error(43, "Multiple conflicting authentication "
+                                      "mechanisms provided")
+            if form["apiKey"] != API_KEY:
+                return self.error(44, "Invalid API key")
+        else:
+            user, token, salt = form.get("u"), form.get("t"), form.get("s")
+            expected = hashlib.md5((PASSWORD + (salt or "")).encode()).hexdigest()
+            if user != lib["user"] or token != expected:
+                return self.error(40, "Wrong username or password")
         if method == "ping":
             return self.response()
+        if method == "getUser":
+            # Only the signed-in user's own name (Navidrome's GetUser).
+            if form.get("username", "").lower() != lib["user"].lower():
+                return self.error(50, "User is not authorized for the given operation")
+            return self.response(user={"username": lib["user"],
+                                       "scrobblingEnabled": True})
         if method == "getAlbumList2":
             albums = [self._starred(a) for a in lib["albums"]]
             kind = form.get("type", "newest")

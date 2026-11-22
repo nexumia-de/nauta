@@ -59,7 +59,15 @@ home and on mobile data (nexumia-de/nauta#6); the calls added for the
 | `u`, `t`, `s` | `t == md5(password + s)` in hex; Nauta's choice, a fresh salt per request |
 | `u`, `p` | plain or `enc:`-hex password |
 | `u`, `jwt` | Navidrome's own UI tokens |
-| `apiKey` | OpenSubsonic `apiKeyAuthentication`; must not be combined with `u`, `p`, `t`, `s` (error 43) |
+| `apiKey` | OpenSubsonic `apiKeyAuthentication`; must not be combined with `u`, `p`, `t`, `s`, `jwt` (error 43); unknown key: error 44 |
+
+API keys belong to a player, not directly to a user: `authenticateAPIKey`
+looks the key up with `Player().FindByAPIKey` and signs in that
+player's user[^nd-mw]. Keys start with `nds_` (`consts.APIKeyPrefix`)
+and are made in the web UI under "Players & API keys"
+(`ui/src/player/ApiKeyInput.jsx`). Failed keys are rate-limited per
+client IP and key. A key also works as `p` with `u`, which Nauta does
+not use (it sends tokens, not passwords).
 
 Navidrome also accepts reverse-proxy authentication (a user header from
 a whitelisted proxy). Failed logins are rate-limited per IP and user.
@@ -79,6 +87,7 @@ found. Nauta treats 40, 41 and 44 as "signed out".
 |---|---|---|
 | `getOpenSubsonicExtensions` | – | `openSubsonicExtensions` |
 | `ping` | – | – |
+| `getUser` | `username` (only the signed-in user's own, error 50 otherwise) | `user` |
 | `getAlbumList2` | `type` (newest, …), `size`, `offset` | `albumList2.album[]` |
 | `getArtists` | – | `artists.index[].artist[]` |
 | `getArtist` | `id` | `artist` with `album[]` |

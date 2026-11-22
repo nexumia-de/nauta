@@ -6,13 +6,17 @@ import logging
 from gi.repository import GObject
 from phosh_toolkit import tasks, tls
 from phosh_toolkit.proxy_login import CookieJar, ProxyCredentials
-from phosh_toolkit.http import NETWORK, HttpError
+from phosh_toolkit.http import NETWORK, SERVER, HttpError
 from phosh_toolkit.router import CONNECTING, OFFLINE, Router  # noqa: F401
 
 from nauta import keyring, settings
-from nauta.api import Subsonic
+from nauta.api import API_KEY_EXTENSION, Subsonic, extensions
 
 log = logging.getLogger("nauta.connection")
+
+# Values of Account.auth: signed in with the password or an API key.
+PASSWORD = "password"
+API_KEY = "api-key"
 
 
 class Connection(Router):
@@ -35,7 +39,10 @@ class Connection(Router):
         self.certificate_error = None
         if self.account.signed_in:
             self.api.user = self.account.user_name
-            self.api.password = keyring.lookup(keyring.PASSWORD) or ""
+            if self.account.auth == API_KEY:
+                self.api.api_key = keyring.lookup(keyring.API_KEY) or ""
+            else:
+                self.api.password = keyring.lookup(keyring.PASSWORD) or ""
         self.load_certificate()
         # A reverse proxy's own login (docs/connection.md): its session
         # cookies, or its HTTP Basic user name and password.
@@ -51,7 +58,7 @@ class Connection(Router):
 
     @property
     def signed_in(self):
-        return self.account.signed_in and bool(self.api.password)
+        return self.account.signed_in and bool(self.api.password or self.api.api_key)
 
     def load_certificate(self):
         self.certificate_error = None
@@ -67,18 +74,27 @@ class Connection(Router):
     def save(self):
         self.store.save(self.account)
 
-    def signed_in_as(self, user, password, info):
+    def signed_in_as(self, user, secret, info, auth=PASSWORD):
+        """Keep the password or the API key (`auth`) in the keyring and
+        forget the other one."""
         self.account.user_name = user
+        self.account.auth = auth
         self.account.server_type = info.get("type", "")
         self.account.server_version = info.get("serverVersion", "")
-        keyring.store(keyring.PASSWORD, password)
-        self.api.user, self.api.password = user, password
+        kept, dropped = (keyring.API_KEY, keyring.PASSWORD) if auth == API_KEY \
+            else (keyring.PASSWORD, keyring.API_KEY)
+        keyring.store(kept, secret)
+        keyring.clear(dropped)
+        self.api.user = user
+        self.api.password, self.api.api_key = ("", secret) if auth == API_KEY \
+            else (secret, "")
         self.save()
 
     def sign_out(self):
-        """Forget the password; addresses and certificate stay."""
+        """Forget the password or API key; addresses and certificate stay."""
         keyring.clear(keyring.PASSWORD)
-        self.api.password = ""
+        keyring.clear(keyring.API_KEY)
+        self.api.password = self.api.api_key = ""
         self.account.user_name = ""
         self.save()
 
@@ -124,22 +140,37 @@ def probe_with(http):
     return probe
 
 
-def sign_in(connection, url, user, password, done):
+def sign_in(connection, url, user, secret, done, auth=PASSWORD):
     """Check the credentials with ping at `url`; done(info, error) with
-    the server's answer."""
+    the server's answer. `secret` is the password, or with auth=API_KEY
+    an API key, which must belong to `user` (getUser)."""
     api = Subsonic(connection.api.http)
-    api.user, api.password = user, password
+    api.user = user
+    if auth == API_KEY:
+        api.api_key = secret
+    else:
+        api.password = secret
 
     def work():
         info = api.probe(url)
+        if auth == API_KEY and API_KEY_EXTENSION not in extensions(info):
+            raise HttpError(SERVER, "This server doesn't accept API keys")
         api.ping(url)
+        if auth == API_KEY:
+            try:
+                api.user_info(user, url)
+            except HttpError as e:
+                if e.kind != SERVER:
+                    raise
+                raise HttpError(SERVER, "This API key belongs to another user") \
+                    from None
         return info
 
     def finished(info, error):
         if error is None:
             connection.api.base_url = url
             connection.base_url = url
-            connection.signed_in_as(user, password, info)
+            connection.signed_in_as(user, secret, info, auth)
         done(info, error)
 
     tasks.run(work, finished)

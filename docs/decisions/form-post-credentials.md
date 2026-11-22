@@ -34,8 +34,9 @@ client can't check who it talks to before sending credentials
 
 - **API key** (`apiKey`, OpenSubsonic `apiKeyAuthentication`):
   avoids storing the password, but the key is as replayable as a token
-  and must be created on the server first. Planned as a sign-in option
-  (M2).
+  and must be created on the server first. Offered as a sign-in option
+  since 2026-11-22 (#12, [connection](../connection.md#sign-in-with-an-api-key-12)),
+  in the form body like everything else.
 - **Reverse-proxy authentication** (the proxy maps the client
   certificate to a user header): no password at all, but needs proxy
   and Navidrome configuration; documented as an idea for the owner.
