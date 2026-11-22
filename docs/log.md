@@ -2,6 +2,7 @@
 
 ## 2026-11-22
 * **Creation**: [Owner checks](owner-checks.md): what only the owner can do, per closed issue. Battery and CPU while streaming (#7) needs the phone; the method is there and [playback](playback.md#battery-and-cpu) waits for the results.
+* **Update**: [Playback](playback.md#gapless-playback-8): the design for gapless playback (#8), toolkit `Media` with a next URI on `about-to-finish` plus Nauta's queue handing it the next song; the toolkit part is an [owner check](owner-checks.md#gapless-playback-8).
 
 ## 2026-11-17
 * **Update**: The Flatpak module `phosh-toolkit` is pinned to `v0.5.0` (commit `e5cccb6`) ([dependencies](dependencies.md)). Its `ConnectionForm` has the "Other Certificate Hosts" row itself (phosh-toolkit#52/#53) and passes the hosts to the first login too, so `nauta/connection_form.py` (own row and `parse_hosts`) is removed; `setup.py` and `find.py` use the toolkit's form with `proxy_basic=True`, music server and MeTube alike. [Connection](connection.md#certificate-hosts-identity-provider-on-another-host) updated.

@@ -38,3 +38,16 @@ off, battery above 80 %, nothing else playing.
   [playback](playback.md#battery-and-cpu); if "Original" over mobile data
   costs clearly more than 192 kbit/s, lower the "Away" default there and
   in `nauta/settings.py` (`quality_away`).
+
+# Gapless playback (#8)
+
+Needs a change in phosh-toolkit, where the shared player lives; the
+design is in [playback](playback.md#gapless-playback-8).
+
+- [ ] Have the toolkit's `media.Media` take a next URI and switch to it on
+  playbin3's `about-to-finish` (an issue or task in phosh-toolkit), then
+  tag a toolkit release.
+- [ ] Then, in Nauta: pin that tag, queue the next song's proxy URL from
+  `player.py` as described in playback, with the test described there.
+- [ ] On the phone: a live album or DJ mix plays through without a gap
+  at the song changes, at home and away.

@@ -155,10 +155,38 @@ data, "Original" and 192 kbit/s, screen off, one hour each) are in the
 results go into a table here; the "Away" default (192 kbit/s,
 `settings.py`) is revisited with them.
 
+# Gapless playback (#8)
+
+Not built yet: `Player._make_media()` makes one `phosh_toolkit.media.Media`
+per song, so the next song starts in a new pipeline after the old one
+reached EOS, with a short gap. The player is shared with Ephyra, so the
+change belongs in phosh-toolkit ([shared code](../../phosh-toolkit/docs/shared-connection.md)).
+The design, from the toolkit's `media.py` at `v0.5.0`:
+
+- **Toolkit** (`media.Media`): a property or method to set the next URI.
+  On playbin3's `about-to-finish` signal (emitted on a streaming
+  thread) the `Media` sets `uri` to the queued next URI, so the same
+  pipeline goes on without EOS. When the new stream starts
+  (`STREAM_START` on the bus, main thread) it emits a signal such as
+  `next-started` and resets `timestamp`/`duration`; without a queued URI
+  it behaves as today (EOS, `ended`).
+- **Nauta** (`player.py`): after a song starts, hand the proxy URL of
+  the song that `next()` would pick (repeat one, repeat all, shuffle
+  and queue edits included) to the `Media`, and hand it again whenever
+  the queue or the modes change. On `next-started`: scrobble the old
+  song as played, move the queue position, reset `_scrobbled`, notify
+  `song` (MPRIS, Now Playing, the player bar). Quality changes with the
+  route already restart the song; they would clear the queued URI.
+- **Tests**: two WAV tones from the demo server through the proxy;
+  the second follows without `ended` going true, the queue position
+  moves, both are scrobbled.
+
+What only the owner can do is in the
+[owner checks](owner-checks.md#gapless-playback-8).
+
 # Not yet
 
-Gapless playback (#8) and crossfade (#35) need changes to
-phosh-toolkit's `media.Media` (one pipeline per song today).
+Crossfade (#35) needs two pipelines overlapping, on top of gapless.
 
 # Verified (2026-11-04, cloud container, GStreamer 1.24)
 
