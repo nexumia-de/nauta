@@ -161,7 +161,7 @@ Not built yet: `Player._make_media()` makes one `phosh_toolkit.media.Media`
 per song, so the next song starts in a new pipeline after the old one
 reached EOS, with a short gap. The player is shared with Ephyra, so the
 change belongs in phosh-toolkit ([shared code](../../phosh-toolkit/docs/shared-connection.md)).
-The design, from the toolkit's `media.py` at `v0.8.0` (unchanged since `v0.5.0`):
+The design, from the toolkit's `media.py` at `v0.8.1` (unchanged since `v0.5.0`):
 
 - **Toolkit** (`media.Media`): a property or method to set the next URI.
   On playbin3's `about-to-finish` signal (emitted on a streaming
