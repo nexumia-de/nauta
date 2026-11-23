@@ -52,62 +52,69 @@
   <screenshots>
     <screenshot type="default">
       <caption>The newest albums of the library</caption>
-      <image>https://github.com/nexumia-de/nauta/releases/download/v0.3.0/albums-phone-light.png</image>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.4.0/albums-phone-light.png</image>
     </screenshot>
     <screenshot>
       <caption>The newest albums of the library</caption>
-      <image>https://github.com/nexumia-de/nauta/releases/download/v0.3.0/albums-desktop-light.png</image>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.4.0/albums-desktop-light.png</image>
     </screenshot>
     <screenshot>
       <caption>An album</caption>
-      <image>https://github.com/nexumia-de/nauta/releases/download/v0.3.0/album-phone-light.png</image>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.4.0/album-phone-light.png</image>
     </screenshot>
     <screenshot>
       <caption>An album</caption>
-      <image>https://github.com/nexumia-de/nauta/releases/download/v0.3.0/album-desktop-light.png</image>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.4.0/album-desktop-light.png</image>
     </screenshot>
     <screenshot>
       <caption>Now playing, with the queue</caption>
-      <image>https://github.com/nexumia-de/nauta/releases/download/v0.3.0/now-playing-phone-light.png</image>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.4.0/now-playing-phone-light.png</image>
     </screenshot>
     <screenshot>
       <caption>Now playing, with the queue</caption>
-      <image>https://github.com/nexumia-de/nauta/releases/download/v0.3.0/now-playing-desktop-light.png</image>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.4.0/now-playing-desktop-light.png</image>
     </screenshot>
     <screenshot>
       <caption>An artist with popular songs, artist radio and similar artists</caption>
-      <image>https://github.com/nexumia-de/nauta/releases/download/v0.3.0/artist-phone-light.png</image>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.4.0/artist-phone-light.png</image>
     </screenshot>
     <screenshot>
       <caption>An artist with popular songs, artist radio and similar artists</caption>
-      <image>https://github.com/nexumia-de/nauta/releases/download/v0.3.0/artist-desktop-light.png</image>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.4.0/artist-desktop-light.png</image>
     </screenshot>
     <screenshot>
       <caption>Lyrics that follow the song</caption>
-      <image>https://github.com/nexumia-de/nauta/releases/download/v0.3.0/lyrics-phone-light.png</image>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.4.0/lyrics-phone-light.png</image>
     </screenshot>
     <screenshot>
       <caption>Lyrics that follow the song</caption>
-      <image>https://github.com/nexumia-de/nauta/releases/download/v0.3.0/lyrics-desktop-light.png</image>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.4.0/lyrics-desktop-light.png</image>
     </screenshot>
     <screenshot>
       <caption>Finding new music with your own MeTube server</caption>
-      <image>https://github.com/nexumia-de/nauta/releases/download/v0.3.0/find-music-phone-light.png</image>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.4.0/find-music-phone-light.png</image>
     </screenshot>
     <screenshot>
       <caption>Finding new music with your own MeTube server</caption>
-      <image>https://github.com/nexumia-de/nauta/releases/download/v0.3.0/find-music-desktop-light.png</image>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.4.0/find-music-desktop-light.png</image>
     </screenshot>
     <screenshot>
       <caption>Downloading a whole album, or only some of its songs</caption>
-      <image>https://github.com/nexumia-de/nauta/releases/download/v0.3.0/find-album-phone-light.png</image>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.4.0/find-album-phone-light.png</image>
     </screenshot>
     <screenshot>
       <caption>Downloading a whole album, or only some of its songs</caption>
-      <image>https://github.com/nexumia-de/nauta/releases/download/v0.3.0/find-album-desktop-light.png</image>
+      <image>https://github.com/nexumia-de/nauta/releases/download/v0.4.0/find-album-desktop-light.png</image>
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.4.0" date="2026-11-23">
+      <description>
+        <ul>
+          <li>Jukebox has a "Report a Problem…" entry in the main menu that sends a problem or an idea to the developer as a GitHub issue, with your own GitHub token or through the issue form in your browser.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.0" date="2026-11-22">
       <description>
         <ul>
